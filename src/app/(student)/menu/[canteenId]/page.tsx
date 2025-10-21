@@ -2,6 +2,7 @@
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuthContext } from "@/contexts/auth-context";
+import { AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -42,6 +43,50 @@ export default function MenuPage() {
       return data;
     },
   });
+  // Fetch announcements
+  const { data: announcements } = useQuery({
+    queryKey: ["announcements", canteenId],
+    queryFn: async () => {
+      const { data, error } = await supabaseClient
+        .from("announcements")
+        .select("*")
+        .eq("canteen_id", canteenId)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+  const getAnnouncementIcon = (type: string) => {
+    switch (type) {
+      case "info":
+        return <Info className="h-5 w-5" />;
+      case "success":
+        return <CheckCircle className="h-5 w-5" />;
+      case "warning":
+        return <AlertTriangle className="h-5 w-5" />;
+      case "error":
+        return <AlertCircle className="h-5 w-5" />;
+      default:
+        return <Info className="h-5 w-5" />;
+    }
+  };
+
+  const getAnnouncementClass = (type: string) => {
+    switch (type) {
+      case "info":
+        return "bg-blue-50 border-blue-200 text-blue-800";
+      case "success":
+        return "bg-green-50 border-green-200 text-green-800";
+      case "warning":
+        return "bg-yellow-50 border-yellow-200 text-yellow-800";
+      case "error":
+        return "bg-red-50 border-red-200 text-red-800";
+      default:
+        return "bg-gray-50 border-gray-200 text-gray-800";
+    }
+  };
 
   // Fetch menu items
   const { data: menuItems, isLoading } = useQuery({
@@ -141,6 +186,25 @@ export default function MenuPage() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          {/* Announcements Section */}
+          {announcements && announcements.length > 0 && (
+            <div className="mb-6 space-y-3 animate-slide-up">
+              {announcements.map((announcement) => (
+                <div
+                  key={announcement.id}
+                  className={`p-4 rounded-lg border-2 flex items-start gap-3 ${getAnnouncementClass(
+                    announcement.type,
+                  )}`}
+                >
+                  {getAnnouncementIcon(announcement.type)}
+                  <div className="flex-1">
+                    <h4 className="font-semibold mb-1">{announcement.title}</h4>
+                    <p className="text-sm">{announcement.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {isLoading && (
             <div className="space-y-8">
               {[1, 2].map((i) => (

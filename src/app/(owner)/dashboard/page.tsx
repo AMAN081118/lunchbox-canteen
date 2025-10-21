@@ -271,7 +271,6 @@ export default function OwnerDashboardPage() {
                     <Button className="w-full">View Orders</Button>
                   </CardContent>
                 </Card>
-
                 <Card
                   className="cursor-pointer hover:shadow-lg transition"
                   onClick={() => router.push("/menu-management")}
@@ -286,8 +285,7 @@ export default function OwnerDashboardPage() {
                     <Button className="w-full">Manage Menu</Button>
                   </CardContent>
                 </Card>
-
-                <Card
+                {/* <Card
                   className="cursor-pointer hover:shadow-lg transition"
                   onClick={() => router.push("/analytics")}
                 >
@@ -299,6 +297,20 @@ export default function OwnerDashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <Button className="w-full">View Analytics</Button>
+                  </CardContent>
+                </Card> */}
+                <Card
+                  className="cursor-pointer hover:shadow-lg transition"
+                  onClick={() => router.push("/settings")}
+                >
+                  <CardHeader>
+                    <CardTitle>Canteen Settings</CardTitle>
+                    <CardDescription>
+                      Update canteen info and post announcements
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button className="w-full">Manage Settings</Button>
                   </CardContent>
                 </Card>
               </div>
