@@ -1,3 +1,4 @@
+// src/app/search/page.tsx
 "use client";
 
 import { MainLayout } from "@/components/layout/main-layout";
@@ -11,62 +12,58 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, MapPin } from "lucide-react";
+import { Search, MapPin, Plus, Minus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
-import { Plus, Minus } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
+
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("q") || "";
+  const query = searchParams.get("q") || "";
+  const canteenId = searchParams.get("canteen");
   const { addItem, updateQuantity, getItemQuantity } = useCartStore();
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
 
-  // Search canteens
+  const [searchQuery, setSearchQuery] = useState(query);
+
+  // Search canteens: Only runs when "All Canteens" is effectively selected (no canteenId in URL)
   const { data: canteens, isLoading: loadingCanteens } = useQuery({
-    queryKey: ["search-canteens", searchQuery],
+    queryKey: ["search-canteens", query, canteenId],
     queryFn: async () => {
-      if (!searchQuery) return [];
-
+      if (!query) return [];
       const { data, error } = await supabaseClient
         .from("canteens")
         .select("*")
-        .ilike("name", `%${searchQuery}%`)
-        .eq("is_active", true);
+        .textSearch("name", query, { type: "websearch" });
 
       if (error) throw error;
       return data;
     },
-    enabled: !!searchQuery,
+    enabled: !!query && !canteenId, // Only runs if there's a query and no specific canteen is chosen
   });
 
-  // Search menu items
+  // Search menu items: Always runs with a query, but filters by canteen if one is selected
   const { data: menuItems, isLoading: loadingItems } = useQuery({
-    queryKey: ["search-items", searchQuery],
+    queryKey: ["search-items", query, canteenId],
     queryFn: async () => {
-      if (!searchQuery) return [];
+      if (!query) return [];
 
-      const { data, error } = await supabaseClient
+      let queryBuilder = supabaseClient
         .from("menu_items")
-        .select(
-          `
-          *,
-          canteens (
-            id,
-            name
-          )
-        `,
-        )
-        .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
-        .eq("available", true);
+        .select("*, canteens(id, name)")
+        .textSearch("name", query, { type: "websearch" });
 
+      if (canteenId) {
+        queryBuilder = queryBuilder.eq("canteen_id", canteenId);
+      }
+
+      const { data, error } = await queryBuilder;
       if (error) throw error;
       return data;
     },
-    enabled: !!searchQuery,
+    enabled: !!query,
   });
 
   const handleSearch = () => {
@@ -138,7 +135,6 @@ export default function SearchPage() {
                 </div>
               )}
 
-              {/* Menu Items Results */}
               {/* Menu Items Results */}
               {menuItems && menuItems.length > 0 && (
                 <div>

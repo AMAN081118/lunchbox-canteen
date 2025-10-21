@@ -97,7 +97,7 @@ export default function SignupPage() {
                     Manage orders efficiently
                   </li>
                   <li className="flex items-center text-sm text-gray-600">
-                    <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3 shrink-0">
                       ✓
                     </span>
                     Update menu in real-time
