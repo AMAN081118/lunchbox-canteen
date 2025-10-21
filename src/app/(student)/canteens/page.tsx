@@ -3,6 +3,7 @@
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuthContext } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
+import { RoleSwitcher } from "@/components/layout/role-switcher";
 import {
   Card,
   CardContent,
@@ -18,6 +19,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function CanteensPage() {
   const { user, signOut } = useAuthContext();
   const router = useRouter();
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabaseClient
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   // Fetch canteens from database
   const {
@@ -129,6 +143,9 @@ export default function CanteensPage() {
             </div>
           )}
         </main>
+        {profile && (
+          <RoleSwitcher currentRole="student" userRole={profile.role} />
+        )}
       </div>
     </ProtectedRoute>
   );

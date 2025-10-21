@@ -2,6 +2,7 @@
 
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuthContext } from "@/contexts/auth-context";
+import { RoleSwitcher } from "@/components/layout/role-switcher";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -304,6 +305,10 @@ export default function OwnerDashboardPage() {
             </>
           )}
         </main>
+        {/* Role Switcher */}
+        {profile && (
+          <RoleSwitcher currentRole="owner" userRole={profile.role} />
+        )}
       </div>
     </ProtectedRoute>
   );

@@ -1,0 +1,204 @@
+"use client";
+
+import { MainLayout } from "@/components/layout/main-layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, MapPin } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabaseClient } from "@/lib/supabase/client";
+
+export default function SearchPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") || "";
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+
+  // Search canteens
+  const { data: canteens, isLoading: loadingCanteens } = useQuery({
+    queryKey: ["search-canteens", searchQuery],
+    queryFn: async () => {
+      if (!searchQuery) return [];
+
+      const { data, error } = await supabaseClient
+        .from("canteens")
+        .select("*")
+        .ilike("name", `%${searchQuery}%`)
+        .eq("is_active", true);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!searchQuery,
+  });
+
+  // Search menu items
+  const { data: menuItems, isLoading: loadingItems } = useQuery({
+    queryKey: ["search-items", searchQuery],
+    queryFn: async () => {
+      if (!searchQuery) return [];
+
+      const { data, error } = await supabaseClient
+        .from("menu_items")
+        .select(
+          `
+          *,
+          canteens (
+            id,
+            name
+          )
+        `,
+        )
+        .or(`name.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`)
+        .eq("available", true);
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!searchQuery,
+  });
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+  };
+
+  const isLoading = loadingCanteens || loadingItems;
+  const hasResults =
+    (canteens && canteens.length > 0) || (menuItems && menuItems.length > 0);
+
+  return (
+    <MainLayout>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Search Bar */}
+          <div className="mb-8">
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white rounded-xl shadow-sm p-2 flex gap-2">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input
+                    placeholder="Search for dishes or canteens..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    className="pl-10 border-0"
+                  />
+                </div>
+                <Button onClick={handleSearch} className="bg-primary-600">
+                  Search
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Results */}
+          {isLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Searching...</p>
+            </div>
+          ) : hasResults ? (
+            <>
+              {/* Canteens Results */}
+              {canteens && canteens.length > 0 && (
+                <div className="mb-12">
+                  <h2 className="text-2xl font-bold mb-4">
+                    Canteens ({canteens.length})
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {canteens.map((canteen) => (
+                      <Card
+                        key={canteen.id}
+                        className="cursor-pointer hover:shadow-lg transition-shadow"
+                        onClick={() => router.push(`/menu/${canteen.id}`)}
+                      >
+                        <CardHeader>
+                          <CardTitle>{canteen.name}</CardTitle>
+                          <CardDescription className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            Campus Location
+                          </CardDescription>
+                        </CardHeader>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Menu Items Results */}
+              {menuItems && menuItems.length > 0 && (
+                <div>
+                  <h2 className="text-2xl font-bold mb-4">
+                    Dishes ({menuItems.length})
+                  </h2>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {menuItems.map((item) => (
+                      <Card
+                        key={item.id}
+                        className="cursor-pointer hover:shadow-lg transition-shadow"
+                        onClick={() => router.push(`/menu/${item.canteen_id}`)}
+                      >
+                        <div className="relative h-32 bg-gray-100 flex items-center justify-center text-4xl">
+                          {item.veg ? "🥗" : "🍗"}
+                          <Badge
+                            className={`absolute top-2 left-2 ${
+                              item.veg
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {item.veg ? "Veg" : "Non-Veg"}
+                          </Badge>
+                        </div>
+                        <CardContent className="p-3">
+                          <h3 className="font-semibold text-sm mb-1 line-clamp-1">
+                            {item.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 mb-2">
+                            {item.canteens?.name}
+                          </p>
+                          <p className="text-lg font-bold text-primary-600">
+                            ₹{item.price_inr}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : searchQuery ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold mb-2">No results found</h3>
+              <p className="text-gray-600">
+                Try searching with different keywords
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🍽️</div>
+              <h3 className="text-xl font-semibold mb-2">
+                Search for your favorite food
+              </h3>
+              <p className="text-gray-600">
+                Enter a dish name or canteen to get started
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </MainLayout>
+  );
+}
