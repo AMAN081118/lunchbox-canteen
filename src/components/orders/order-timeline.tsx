@@ -115,12 +115,14 @@ export function OrderTimeline({ status, createdAt }: OrderTimelineProps) {
                   >
                     {step.label}
                   </p>
-                  {isCurrent && (
+                  {/* ✅ FIXED: Only show "In Progress" if not completed */}
+                  {isCurrent && status !== "completed" && (
                     <p className="text-sm text-primary-600 font-medium animate-fade-in">
                       In Progress...
                     </p>
                   )}
-                  {isCompleted && !isCurrent && (
+                  {/* ✅ FIXED: Show "Completed" for all finished steps including current when status is completed */}
+                  {isCompleted && (status === "completed" || !isCurrent) && (
                     <p className="text-sm text-green-600">✓ Completed</p>
                   )}
                 </div>
@@ -144,7 +146,7 @@ export function OrderTimeline({ status, createdAt }: OrderTimelineProps) {
         })}
       </div>
 
-      {/* Estimated Time */}
+      {/* Estimated Time - ✅ FIXED: Only show if not completed */}
       {status !== "completed" && (
         <div className="mt-6 pt-6 border-t border-gray-200">
           <div className="flex items-center justify-between text-sm">

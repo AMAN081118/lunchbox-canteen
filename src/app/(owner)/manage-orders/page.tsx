@@ -22,8 +22,9 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Star } from "lucide-react";
 import { useEffect } from "react";
+import { RoleSwitcher } from "@/components/layout/role-switcher";
 
 type OrderStatus =
   | "pending"
@@ -44,103 +45,98 @@ export default function OwnerOrdersPage() {
     queryKey: ["profile", user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error("Not authenticated");
-
       const { data, error } = await supabaseClient
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
-
       if (error) throw error;
       return data;
     },
     enabled: !!user?.id,
   });
 
-  // Fetch owner's canteen
+  // Fetch canteen owner
   const { data: canteenOwner } = useQuery({
     queryKey: ["canteen-owner", user?.id],
     queryFn: async () => {
       if (!user?.id) throw new Error("Not authenticated");
-
-      console.log("Fetching canteen owner for user:", user.id);
-
       const { data, error } = await supabaseClient
         .from("canteen_owners")
         .select("*, canteens(*)")
         .eq("owner_profile_id", user.id)
         .single();
-
-      if (error) {
-        console.error("Canteen owner fetch error:", error);
-        throw error;
-      }
-
-      console.log("Canteen owner:", data);
+      if (error) throw error;
       return data;
     },
     enabled: !!user?.id && profile?.role === "owner",
   });
 
-  // ✅ FIXED: Fetch orders with separate profile lookup
-  const {
-    data: orders,
-    isLoading,
-    error,
-  } = useQuery({
+  // ✅ FIXED: Fetch orders with proper profile join
+  const { data: orders, isLoading } = useQuery({
     queryKey: ["owner-orders", canteenOwner?.canteen_id],
     queryFn: async () => {
       if (!canteenOwner?.canteen_id) return [];
 
-      console.log("Fetching orders for canteen:", canteenOwner.canteen_id);
-
-      const { data, error } = await supabaseClient
+      // First fetch orders
+      const { data: ordersData, error: ordersError } = await supabaseClient
         .from("orders")
-        .select("*, order_items(*)")
+        .select("*")
         .eq("canteen_id", canteenOwner.canteen_id)
         .order("placed_at", { ascending: false });
 
-      if (error) {
-        console.error("Orders fetch error:", error);
-        throw error;
-      }
+      if (ordersError) throw ordersError;
+      if (!ordersData) return [];
 
-      console.log("Orders fetched:", data);
+      // Then fetch user profiles separately
+      const userIds = [...new Set(ordersData.map((order) => order.user_id))];
+      const { data: profilesData } = await supabaseClient
+        .from("profiles")
+        .select("id, full_name, phone")
+        .in("id", userIds);
 
-      // Fetch user profiles separately
-      if (data && data.length > 0) {
-        const userIds = [...new Set(data.map((o) => o.user_id))];
+      const profileMap = new Map(profilesData?.map((p) => [p.id, p]) || []);
 
-        const { data: profiles, error: profileError } = await supabaseClient
-          .from("profiles")
-          .select("id, full_name, phone")
-          .in("id", userIds);
+      // Fetch order items for each order
+      const ordersWithDetails = await Promise.all(
+        ordersData.map(async (order) => {
+          // Get order items
+          const { data: orderItems } = await supabaseClient
+            .from("order_items")
+            .select("*")
+            .eq("order_id", order.id);
 
-        if (profileError) {
-          console.error("Profiles fetch error:", profileError);
-        } else {
-          console.log("Profiles fetched:", profiles);
-        }
+          // Get feedback for completed orders
+          let itemsWithFeedback = orderItems || [];
+          if (order.status === "completed" && orderItems) {
+            const itemIds = orderItems.map((item) => item.id);
+            const { data: feedbackData } = await supabaseClient
+              .from("feedback")
+              .select("order_item_id, rating, comment")
+              .in("order_item_id", itemIds);
 
-        // Map profiles to orders
-        const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
-        return data.map((order) => ({
-          ...order,
-          profiles: profileMap.get(order.user_id) || null,
-        }));
-      }
+            const feedbackMap = new Map(
+              feedbackData?.map((f) => [f.order_item_id, f]) || [],
+            );
 
-      return data || [];
+            itemsWithFeedback = orderItems.map((item) => ({
+              ...item,
+              feedback: feedbackMap.get(item.id),
+            }));
+          }
+
+          return {
+            ...order,
+            user_profile: profileMap.get(order.user_id),
+            order_items: itemsWithFeedback,
+          };
+        }),
+      );
+
+      return ordersWithDetails;
     },
     enabled: !!canteenOwner?.canteen_id,
   });
-
-  // Debug log errors
-  useEffect(() => {
-    if (error) {
-      console.error("Query error:", error);
-    }
-  }, [error]);
 
   // Real-time subscription
   useEffect(() => {
@@ -269,20 +265,6 @@ export default function OwnerOrdersPage() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          {/* Debug Info */}
-          {error && (
-            <Card className="mb-4 border-red-200 bg-red-50">
-              <CardContent className="pt-6">
-                <p className="text-red-800 font-semibold">
-                  Error loading orders:
-                </p>
-                <p className="text-sm text-red-600">
-                  {(error as Error).message}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -299,9 +281,10 @@ export default function OwnerOrdersPage() {
                         <CardTitle className="text-lg">
                           Order #{order.id.slice(0, 8)}
                         </CardTitle>
+                        {/* ✅ FIXED: Use user_profile instead of profiles */}
                         <CardDescription>
-                          {order.profiles?.full_name || "Unknown"} •{" "}
-                          {order.profiles?.phone || "N/A"}
+                          {order.user_profile?.full_name || "Unknown"} •{" "}
+                          {order.user_profile?.phone || "N/A"}
                         </CardDescription>
                         <CardDescription>
                           {new Date(order.placed_at).toLocaleString("en-IN")}
@@ -318,16 +301,44 @@ export default function OwnerOrdersPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {/* Order Items */}
-                    <div className="mb-4 space-y-1">
+                    {/* Order Items with Feedback */}
+                    <div className="mb-4 space-y-2">
                       <p className="font-semibold text-sm text-gray-700">
                         Items:
                       </p>
                       {order.order_items?.map((item: any) => (
-                        <p key={item.id} className="text-sm text-gray-600">
-                          {item.name} × {item.quantity} = ₹
-                          {item.total_price_inr}
-                        </p>
+                        <div key={item.id} className="text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">
+                              {item.name} × {item.quantity}
+                            </span>
+                            <span className="font-medium">
+                              ₹{item.total_price_inr}
+                            </span>
+                          </div>
+                          {/* Show feedback if exists */}
+                          {item.feedback && (
+                            <div className="mt-1 ml-4 flex items-start gap-2 text-xs">
+                              <div className="flex flex-shrink-0">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-3 w-3 ${
+                                      star <= (item.feedback.rating || 0)
+                                        ? "fill-accent-yellow text-accent-yellow"
+                                        : "text-gray-300"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                              {item.feedback.comment && (
+                                <span className="text-gray-500 italic flex-1">
+                                  "{item.feedback.comment}"
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
 
@@ -380,13 +391,15 @@ export default function OwnerOrdersPage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <p className="text-gray-600">No orders yet</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Canteen ID: {canteenOwner?.canteen_id?.slice(0, 8)}
-                </p>
               </CardContent>
             </Card>
           )}
         </main>
+
+        {/* Role Switcher */}
+        {profile && (
+          <RoleSwitcher currentRole="owner" userRole={profile.role} />
+        )}
       </div>
     </ProtectedRoute>
   );

@@ -16,11 +16,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
-
+import { Plus, Minus } from "lucide-react";
+import { useCartStore } from "@/store/cart-store";
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
+  const { addItem, updateQuantity, getItemQuantity } = useCartStore();
   const [searchQuery, setSearchQuery] = useState(initialQuery);
 
   // Search canteens
@@ -137,43 +139,103 @@ export default function SearchPage() {
               )}
 
               {/* Menu Items Results */}
+              {/* Menu Items Results */}
               {menuItems && menuItems.length > 0 && (
                 <div>
                   <h2 className="text-2xl font-bold mb-4">
                     Dishes ({menuItems.length})
                   </h2>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {menuItems.map((item) => (
-                      <Card
-                        key={item.id}
-                        className="cursor-pointer hover:shadow-lg transition-shadow"
-                        onClick={() => router.push(`/menu/${item.canteen_id}`)}
-                      >
-                        <div className="relative h-32 bg-gray-100 flex items-center justify-center text-4xl">
-                          {item.veg ? "🥗" : "🍗"}
-                          <Badge
-                            className={`absolute top-2 left-2 ${
-                              item.veg
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
+                    {menuItems.map((item) => {
+                      const quantity = getItemQuantity(item.id);
+
+                      return (
+                        <Card
+                          key={item.id}
+                          className="hover:shadow-lg transition-shadow overflow-hidden"
+                        >
+                          <div
+                            className="relative h-32 bg-gray-100 flex items-center justify-center text-4xl cursor-pointer"
+                            onClick={() => router.push(`/dish/${item.id}`)}
                           >
-                            {item.veg ? "Veg" : "Non-Veg"}
-                          </Badge>
-                        </div>
-                        <CardContent className="p-3">
-                          <h3 className="font-semibold text-sm mb-1 line-clamp-1">
-                            {item.name}
-                          </h3>
-                          <p className="text-xs text-gray-500 mb-2">
-                            {item.canteens?.name}
-                          </p>
-                          <p className="text-lg font-bold text-primary-600">
-                            ₹{item.price_inr}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            {item.veg ? "🥗" : "🍗"}
+                            <Badge
+                              className={`absolute top-2 left-2 ${
+                                item.veg
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {item.veg ? "Veg" : "Non-Veg"}
+                            </Badge>
+                          </div>
+                          <CardContent className="p-3">
+                            <h3
+                              className="font-semibold text-sm mb-1 line-clamp-1 cursor-pointer hover:text-primary-600"
+                              onClick={() => router.push(`/dish/${item.id}`)}
+                            >
+                              {item.name}
+                            </h3>
+                            <p className="text-xs text-gray-500 mb-2">
+                              {item.canteens?.name}
+                            </p>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-lg font-bold text-primary-600">
+                                ₹{item.price_inr}
+                              </p>
+                            </div>
+
+                            {/* Add to Cart Controls */}
+                            {quantity > 0 ? (
+                              <div className="flex items-center justify-center gap-2 bg-gray-100 rounded-lg p-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    updateQuantity(item.id, quantity - 1)
+                                  }
+                                >
+                                  <Minus className="h-4 w-4" />
+                                </Button>
+                                <span className="font-bold w-6 text-center">
+                                  {quantity}
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    updateQuantity(item.id, quantity + 1)
+                                  }
+                                >
+                                  <Plus className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Button
+                                size="sm"
+                                className="w-full bg-primary-600 hover:bg-primary-700"
+                                onClick={() =>
+                                  addItem({
+                                    id: item.id,
+                                    name: item.name,
+                                    price: parseFloat(
+                                      item.price_inr.toString(),
+                                    ),
+                                    canteenId: item.canteen_id,
+                                    canteenName: item.canteens?.name || "",
+                                    veg: item.veg,
+                                  })
+                                }
+                              >
+                                Add
+                              </Button>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
               )}

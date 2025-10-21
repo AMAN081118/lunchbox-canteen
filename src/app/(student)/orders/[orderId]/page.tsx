@@ -15,15 +15,19 @@ import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, MapPin, Phone, User } from "lucide-react";
-import { useEffect } from "react";
+import { ArrowLeft, MapPin } from "lucide-react";
+import { useEffect, useState } from "react";
 import { OrderTimeline } from "@/components/orders/order-timeline";
+import { FeedbackModal } from "@/components/orders/feedback-modal";
 
 export default function OrderDetailPage() {
   const { user, signOut } = useAuthContext();
   const router = useRouter();
   const params = useParams();
   const orderId = params.orderId as string;
+
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   // Fetch order details
   const {
@@ -58,6 +62,63 @@ export default function OrderDetailPage() {
       return data;
     },
   });
+
+  // ✅ FIXED: Check localStorage AND database for feedback submission
+  useEffect(() => {
+    const checkFeedback = async () => {
+      if (!order?.order_items) return;
+
+      // Check localStorage first (instant check)
+      const localStorageKey = `feedback_submitted_${orderId}`;
+      const localFeedbackSubmitted =
+        localStorage.getItem(localStorageKey) === "true";
+
+      if (localFeedbackSubmitted) {
+        setFeedbackSubmitted(true);
+        return;
+      }
+
+      // Check database as backup
+      const orderItemIds = order.order_items.map((item: any) => item.id);
+      const { data: existingFeedback } = await supabaseClient
+        .from("feedback")
+        .select("id")
+        .in("order_item_id", orderItemIds);
+
+      if (existingFeedback && existingFeedback.length > 0) {
+        setFeedbackSubmitted(true);
+        // Save to localStorage for future visits
+        localStorage.setItem(localStorageKey, "true");
+      }
+    };
+
+    if (order?.status === "completed") {
+      checkFeedback();
+    }
+  }, [order, orderId]);
+
+  // ✅ FIXED: Only show modal once when order first becomes completed
+  useEffect(() => {
+    if (!order || !user) return;
+
+    // Only show if order is completed AND feedback not submitted AND modal not already shown
+    if (order.status === "completed" && !feedbackSubmitted) {
+      // Check if we've already shown the modal for this order in this session
+      const sessionKey = `feedback_modal_shown_${orderId}`;
+      const alreadyShownInSession =
+        sessionStorage.getItem(sessionKey) === "true";
+
+      if (!alreadyShownInSession && !showFeedbackModal) {
+        // Small delay for better UX
+        const timer = setTimeout(() => {
+          setShowFeedbackModal(true);
+          // Mark as shown in this session
+          sessionStorage.setItem(sessionKey, "true");
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [order?.status, feedbackSubmitted, showFeedbackModal, orderId, user]);
 
   // Real-time subscription for order updates
   useEffect(() => {
@@ -115,6 +176,14 @@ export default function OrderDetailPage() {
   const handleSignOut = async () => {
     await signOut();
     router.push("/login");
+  };
+
+  // ✅ FIXED: Mark feedback as submitted in localStorage when closed
+  const handleFeedbackClose = () => {
+    setShowFeedbackModal(false);
+    setFeedbackSubmitted(true);
+    // Save to localStorage to persist across page reloads
+    localStorage.setItem(`feedback_submitted_${orderId}`, "true");
   };
 
   return (
@@ -292,6 +361,30 @@ export default function OrderDetailPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Feedback Button (if completed and submitted) */}
+              {order.status === "completed" && feedbackSubmitted && (
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="pt-6 text-center">
+                    <p className="text-blue-800 font-semibold mb-2">
+                      ✅ Feedback Submitted
+                    </p>
+                    <p className="text-sm text-blue-600">
+                      Thank you for sharing your experience!
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Manual Feedback Button */}
+              {order.status === "completed" && !feedbackSubmitted && (
+                <Button
+                  onClick={() => setShowFeedbackModal(true)}
+                  className="w-full bg-primary-600 hover:bg-primary-700"
+                >
+                  Rate Your Order
+                </Button>
+              )}
             </div>
           ) : (
             <Card>
@@ -301,6 +394,16 @@ export default function OrderDetailPage() {
             </Card>
           )}
         </main>
+
+        {/* Feedback Modal */}
+        {order && (
+          <FeedbackModal
+            isOpen={showFeedbackModal}
+            onClose={handleFeedbackClose}
+            orderId={order.id}
+            orderItems={order.order_items || []}
+          />
+        )}
       </div>
     </ProtectedRoute>
   );
