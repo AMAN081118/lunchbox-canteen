@@ -200,7 +200,7 @@ export default function OwnerDashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Today's Orders</CardDescription>
+                    <CardDescription>Today&apos;s Orders</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
@@ -228,7 +228,7 @@ export default function OwnerDashboardPage() {
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardDescription>Today's Revenue</CardDescription>
+                    <CardDescription>Today&apos;s Revenue</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">

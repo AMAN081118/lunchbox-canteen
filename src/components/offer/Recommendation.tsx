@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-
+import Image from "next/image";
 // --- TYPESCRIPT INTERFACE FOR MEAL DATA ---
 interface Meal {
   idMeal: string;
@@ -26,13 +26,19 @@ interface MealCardProps {
 const MealCard: React.FC<MealCardProps> = ({ meal }) => {
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] flex flex-col text-left">
-      {/* Lazy loading for image is a native browser feature */}
-      <img
-        src={meal.strMealThumb}
-        alt={meal.strMeal}
-        className="w-full h-64 object-cover"
-        loading="lazy"
-      />
+      {/* Next.js Image component for optimization */}
+      <div className="relative w-full h-64">
+        <Image
+          src={meal.strMealThumb}
+          alt={meal.strMeal}
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          placeholder="blur"
+          blurDataURL={meal.strMealThumb} // Optional: can use a low-res placeholder
+          priority={false} // Controls if image should preload; 'false' means lazy load
+        />
+      </div>
       <div className="p-5 flex flex-col grow">
         <h2 className="text-xl font-bold text-gray-900 mb-2">{meal.strMeal}</h2>
         <div className="text-sm text-gray-500 mb-4 space-y-1">
@@ -172,7 +178,7 @@ const Recommendation: React.FC = () => {
 
         {!hasMore && meals.length > 0 && (
           <p className="text-lg font-medium mt-4">
-            That's all the meals! Explore more
+            That&apos;s all the meals! Explore more
           </p>
         )}
       </div>

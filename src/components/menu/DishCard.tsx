@@ -1,17 +1,19 @@
 // In a new file, e.g., components/menu/DishCard.tsx
-
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
+import { MapPin } from "lucide-react";
+import Image from "next/image";
+import { fullUrl } from "@/lib/supabase/bucket";
 
 // Define the type for a single item for clarity
 interface PopularItem {
   id: string;
   canteen_id: string;
   name: string;
+  description: string | null;
   price_inr: number;
   veg: boolean;
-  imageUrl?: string; // Assuming you have an image URL for each dish
+  image_path: string | null;
   canteens: {
     name: string;
   } | null;
@@ -30,14 +32,17 @@ export const DishCard: React.FC<DishCardProps> = ({ item }) => {
       className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] flex flex-col cursor-pointer group"
     >
       {/* 1. Proper Image with Lazy Loading */}
-      <div className="relative">
-        <img
+      <div className="relative w-full h-40 object-cover">
+        <Image
           src={
-            item.imageUrl || `https://placehold.co/400x300?text=${item.name}`
+            item.image_path
+              ? `${fullUrl}${item.image_path}`
+              : `https://placehold.co/400x300?text=${item.name}`
           }
           alt={item.name}
           className="w-full h-40 object-cover"
-          loading="lazy"
+          priority={false}
+          fill
         />
         {/* Veg/Non-Veg Badge remains */}
         <Badge
@@ -53,10 +58,18 @@ export const DishCard: React.FC<DishCardProps> = ({ item }) => {
 
       {/* 2. Improved Content Layout & Spacing */}
       <div className="p-4 flex flex-col grow">
-        <h3 className="font-bold text-gray-900 mb-1 line-clamp-2">
+        <h3 className="font-bold text-gray-900 mb-1 line-clamp-2 text-2xl">
           {item.name}
         </h3>
-        <p className="text-sm text-gray-500 mb-3">{item.canteens?.name}</p>
+        {item.description ? <p>{item.description}</p> : ``}
+        {/* <div className="flex align-middle">
+          <MapPin className="h-4 w-4 text-red-500 mr-2 shrink-0" />
+          
+        </div> */}
+        <p className="flex items-center gap-2 text-sm text-gray-500">
+          <MapPin className="h-3.5 w-3.5 text-red-500" />
+          {item.canteens?.name}
+        </p>
 
         {/* 3. Pushed to the bottom using flexbox */}
         <div className="mt-auto flex items-center justify-between">

@@ -2,13 +2,18 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Clock, MapPin, Star, TrendingUp } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 // Define the type for the canteen data this card expects
 interface Canteen {
   id: string;
   name: string;
-  imageUrl?: string; // We'll still use a placeholder for the image
+  img_url: string | null;
+  hostels: {
+    id: string;
+    name: string;
+  };
 }
 
 interface CanteenCardProps {
@@ -24,16 +29,15 @@ export const CanteenCard: React.FC<CanteenCardProps> = ({ canteen }) => {
       className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] flex flex-col cursor-pointer group"
     >
       {/* 1. Image header from the recommendation card style */}
-      <div className="relative">
-        <img
-          src={
-            canteen.imageUrl ||
-            `https://placehold.co/600x400?text=${canteen.name}`
-          }
+      <div className="relative h-48 object-cover">
+        <Image
+          src={`https://placehold.co/400x300.jpg?text=${canteen.name}`}
           alt={canteen.name}
           className="w-full h-48 object-cover"
-          loading="lazy"
+          priority={false}
+          fill
         />
+
         <div className="absolute top-4 right-4">
           <Badge className="bg-accent-yellow text-gray-900 font-semibold">
             <TrendingUp className="h-3 w-3 mr-1" />
@@ -49,7 +53,7 @@ export const CanteenCard: React.FC<CanteenCardProps> = ({ canteen }) => {
         </h2>
         <p className="flex items-center gap-2 text-sm text-gray-500">
           <MapPin className="h-4 w-4" />
-          Campus Location
+          {canteen.hostels?.name}
         </p>
 
         {/* 3. Hardcoded data pushed to the bottom */}

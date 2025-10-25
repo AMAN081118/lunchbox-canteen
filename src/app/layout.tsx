@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
+      <body className={poppins.className}>
         <Providers>
           <AuthProvider>{children}</AuthProvider>
         </Providers>

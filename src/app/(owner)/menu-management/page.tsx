@@ -20,6 +20,13 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { ArrowLeft, Plus, Pencil, Trash2, Search } from "lucide-react";
 import { useState } from "react";
 import { RoleSwitcher } from "@/components/layout/role-switcher";
+import Image from "next/image";
+import { fullUrl, bucketName } from "@/lib/supabase/bucket";
+import type { Database } from "@/types/database.types";
+
+type MenuItem = Database["public"]["Tables"]["menu_items"]["Row"];
+type MenuItemsInsert = Database["public"]["Tables"]["menu_items"]["Insert"];
+type MenuItemsUpdate = Database["public"]["Tables"]["menu_items"]["Update"];
 
 export default function MenuManagementPage() {
   const { user, signOut } = useAuthContext();
@@ -27,8 +34,9 @@ export default function MenuManagementPage() {
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -39,7 +47,7 @@ export default function MenuManagementPage() {
     prep_time_minutes: "",
   });
 
-  // Fetch profile
+  // Profile
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
@@ -55,7 +63,7 @@ export default function MenuManagementPage() {
     enabled: !!user?.id,
   });
 
-  // Fetch canteen owner
+  // Canteen owner
   const { data: canteenOwner } = useQuery({
     queryKey: ["canteen-owner", user?.id],
     queryFn: async () => {
@@ -71,8 +79,8 @@ export default function MenuManagementPage() {
     enabled: !!user?.id && profile?.role === "owner",
   });
 
-  // Fetch menu items
-  const { data: menuItems, isLoading } = useQuery({
+  // Menu items
+  const { data: menuItems, isLoading } = useQuery<MenuItem[]>({
     queryKey: ["menu-items", canteenOwner?.canteen_id],
     queryFn: async () => {
       if (!canteenOwner?.canteen_id) return [];
@@ -88,49 +96,96 @@ export default function MenuManagementPage() {
     enabled: !!canteenOwner?.canteen_id,
   });
 
-  // Add menu item mutation
+  // Add item
   const addItemMutation = useMutation({
-    mutationFn: async (item: any) => {
-      const { error } = await supabaseClient.from("menu_items").insert({
-        ...item,
-        canteen_id: canteenOwner?.canteen_id,
-        price_inr: parseFloat(item.price_inr),
-        prep_time_minutes: item.prep_time_minutes
-          ? parseInt(item.prep_time_minutes)
-          : null,
-      });
+    mutationFn: async () => {
+      let uploadedPath: string | null = null;
+      if (imageFile) {
+        const sanitizedName = imageFile.name.replace(/\s+/g, "_");
+        const timestamp = Date.now();
+        const path = `menu/${timestamp}_${sanitizedName}`;
+
+        const { error } = await supabaseClient.storage
+          .from(bucketName)
+          .upload(path, imageFile, { upsert: false });
+
+        if (error) throw error;
+        uploadedPath = path;
+      }
+
+      const insertItem: MenuItemsInsert = {
+        canteen_id: canteenOwner?.canteen_id ?? "",
+        name: formData.name,
+        description: formData.description,
+        price_inr: parseFloat(formData.price_inr),
+        category: formData.category,
+        veg: formData.veg,
+        available: formData.available,
+        prep_time_minutes: parseInt(formData.prep_time_minutes) || 0,
+        image_path: uploadedPath,
+      };
+
+      const { error } = await supabaseClient
+        .from("menu_items")
+        .insert([insertItem]);
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["menu-items"] });
-      setShowAddForm(false);
       resetForm();
+      setShowAddForm(false);
     },
   });
 
-  // Update menu item mutation
+  // Update item
   const updateItemMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: MenuItemsUpdate;
+    }) => {
+      let imagePath: string | undefined;
+
+      if (imageFile) {
+        const sanitizedName = imageFile.name.replace(/\s+/g, "_");
+        const timestamp = Date.now();
+        const newPath = `menu/${timestamp}_${sanitizedName}`;
+
+        const { error } = await supabaseClient.storage
+          .from(bucketName)
+          .upload(newPath, imageFile, { upsert: false });
+
+        if (error) throw error;
+        imagePath = newPath;
+      }
+
+      // Only update image_path if a new file was selected
+      const updatePayload: MenuItemsUpdate = {
+        ...updates,
+        price_inr: parseFloat(String(updates.price_inr)) || 0,
+        prep_time_minutes: parseInt(String(updates.prep_time_minutes)) || 0,
+        ...(imagePath ? { image_path: imagePath } : {}),
+      };
+
       const { error } = await supabaseClient
         .from("menu_items")
-        .update({
-          ...updates,
-          price_inr: parseFloat(updates.price_inr),
-          prep_time_minutes: updates.prep_time_minutes
-            ? parseInt(updates.prep_time_minutes)
-            : null,
-        })
+        .update(updatePayload)
         .eq("id", id);
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["menu-items"] });
       setEditingItem(null);
       resetForm();
+      setShowAddForm(false);
     },
   });
 
-  // Delete menu item mutation
+  // Delete item
   const deleteItemMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabaseClient
@@ -139,9 +194,8 @@ export default function MenuManagementPage() {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["menu-items"] });
-    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["menu-items"] }),
   });
 
   const resetForm = () => {
@@ -154,9 +208,10 @@ export default function MenuManagementPage() {
       available: true,
       prep_time_minutes: "",
     });
+    setImageFile(null);
   };
 
-  const handleEdit = (item: any) => {
+  const handleEdit = (item: MenuItem) => {
     setEditingItem(item);
     setFormData({
       name: item.name,
@@ -173,9 +228,20 @@ export default function MenuManagementPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingItem) {
-      updateItemMutation.mutate({ id: editingItem.id, updates: formData });
+      updateItemMutation.mutate({
+        id: editingItem.id,
+        updates: {
+          name: formData.name,
+          description: formData.description,
+          price_inr: parseFloat(formData.price_inr),
+          category: formData.category,
+          veg: formData.veg,
+          available: formData.available,
+          prep_time_minutes: parseInt(formData.prep_time_minutes) || 0,
+        },
+      });
     } else {
-      addItemMutation.mutate(formData);
+      addItemMutation.mutate();
     }
   };
 
@@ -184,11 +250,6 @@ export default function MenuManagementPage() {
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.category?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
-
-  const handleSignOut = async () => {
-    await signOut();
-    router.push("/login");
-  };
 
   if (profile && profile.role !== "owner") {
     return (
@@ -201,11 +262,6 @@ export default function MenuManagementPage() {
                 Only canteen owners can access this page.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button onClick={() => router.push("/canteens")}>
-                Go to Student Portal
-              </Button>
-            </CardContent>
           </Card>
         </div>
       </ProtectedRoute>
@@ -216,44 +272,42 @@ export default function MenuManagementPage() {
     <ProtectedRoute redirectTo="/login">
       <div className="min-h-screen bg-gray-50">
         <header className="bg-white shadow">
-          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => router.push("/dashboard")}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Menu Management
-                  </h1>
-                  {canteenOwner && (
-                    <p className="text-sm text-gray-600">
-                      {canteenOwner.canteens?.name}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Button variant="outline" onClick={handleSignOut}>
-                Sign Out
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => router.push("/dashboard")}
+              >
+                <ArrowLeft className="h-5 w-5" />
               </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Menu Management
+                </h1>
+                {canteenOwner && (
+                  <p className="text-sm text-gray-600">
+                    {canteenOwner.canteens?.name}
+                  </p>
+                )}
+              </div>
             </div>
+            <Button variant="outline" onClick={signOut}>
+              Sign Out
+            </Button>
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          {/* Actions Bar */}
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <main className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+          {/* Search + Add */}
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
                 placeholder="Search menu items..."
+                className="pl-10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
               />
             </div>
             <Button
@@ -264,55 +318,49 @@ export default function MenuManagementPage() {
               }}
               className="bg-primary-600 hover:bg-primary-700"
             >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Item
+              <Plus className="h-5 w-5 mr-2" /> Add Item
             </Button>
           </div>
 
-          {/* Add/Edit Form */}
+          {/* Form */}
           {showAddForm && (
-            <Card className="mb-6 border-primary-200 animate-slide-up">
+            <Card>
               <CardHeader>
                 <CardTitle>
-                  {editingItem ? "Edit Menu Item" : "Add New Menu Item"}
+                  {editingItem ? "Edit Menu Item" : "Add Menu Item"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="name">Item Name *</Label>
+                      <Label>Name *</Label>
                       <Input
-                        id="name"
                         required
                         value={formData.name}
                         onChange={(e) =>
                           setFormData({ ...formData, name: e.target.value })
                         }
-                        placeholder="e.g., Masala Dosa"
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="category">Category *</Label>
+                      <Label>Category *</Label>
                       <Input
-                        id="category"
                         required
                         value={formData.category}
                         onChange={(e) =>
                           setFormData({ ...formData, category: e.target.value })
                         }
-                        placeholder="e.g., Breakfast, Lunch"
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="price">Price (₹) *</Label>
+                      <Label>Price (₹) *</Label>
                       <Input
-                        id="price"
+                        required
                         type="number"
                         step="0.01"
-                        required
                         value={formData.price_inr}
                         onChange={(e) =>
                           setFormData({
@@ -320,14 +368,12 @@ export default function MenuManagementPage() {
                             price_inr: e.target.value,
                           })
                         }
-                        placeholder="50"
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="prepTime">Prep Time (minutes)</Label>
+                      <Label>Prep Time (min)</Label>
                       <Input
-                        id="prepTime"
                         type="number"
                         value={formData.prep_time_minutes}
                         onChange={(e) =>
@@ -336,15 +382,14 @@ export default function MenuManagementPage() {
                             prep_time_minutes: e.target.value,
                           })
                         }
-                        placeholder="15"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="description">Description</Label>
+                    <Label>Description</Label>
                     <Textarea
-                      id="description"
+                      rows={3}
                       value={formData.description}
                       onChange={(e) =>
                         setFormData({
@@ -352,55 +397,23 @@ export default function MenuManagementPage() {
                           description: e.target.value,
                         })
                       }
-                      placeholder="Describe the dish..."
-                      rows={3}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Upload Image</Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) =>
+                        setImageFile(e.target.files?.[0] || null)
+                      }
                     />
                   </div>
 
                   <div className="flex gap-4">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="veg"
-                        checked={formData.veg}
-                        onChange={(e) =>
-                          setFormData({ ...formData, veg: e.target.checked })
-                        }
-                        className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                      />
-                      <Label htmlFor="veg" className="cursor-pointer">
-                        Vegetarian
-                      </Label>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="available"
-                        checked={formData.available}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            available: e.target.checked,
-                          })
-                        }
-                        className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                      />
-                      <Label htmlFor="available" className="cursor-pointer">
-                        Available
-                      </Label>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      type="submit"
-                      disabled={
-                        addItemMutation.isPending ||
-                        updateItemMutation.isPending
-                      }
-                    >
-                      {editingItem ? "Update Item" : "Add Item"}
+                    <Button type="submit">
+                      {editingItem ? "Update" : "Add"}
                     </Button>
                     <Button
                       type="button"
@@ -419,27 +432,36 @@ export default function MenuManagementPage() {
             </Card>
           )}
 
-          {/* Menu Items List */}
+          {/* Menu List */}
           {isLoading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-            </div>
-          ) : filteredItems && filteredItems.length > 0 ? (
+            <div className="text-center py-12">Loading...</div>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredItems.map((item) => (
-                <Card
-                  key={item.id}
-                  className="hover:shadow-md transition-shadow"
-                >
-                  <CardHeader className="pb-3">
+              {filteredItems?.map((item) => (
+                <Card key={item.id} className="hover:shadow-lg flex flex-col">
+                  <div className="relative w-full h-40 object-cover">
+                    <Image
+                      src={
+                        item.image_path
+                          ? `${fullUrl}${item.image_path}`
+                          : `https://placehold.co/400x300?text=${encodeURIComponent(
+                              item.name,
+                            )}`
+                      }
+                      alt={item.name}
+                      fill
+                      unoptimized
+                      className="object-cover rounded-xl"
+                      priority={false}
+                    />
+                  </div>
+                  <CardHeader>
                     <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg">{item.name}</CardTitle>
-                        <CardDescription className="mt-1">
-                          {item.category}
-                        </CardDescription>
+                      <div>
+                        <h2 className="font-semibold text-lg">{item.name}</h2>
+                        <p className="text-gray-500 text-sm">{item.category}</p>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex space-x-2">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -450,65 +472,38 @@ export default function MenuManagementPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            if (confirm("Delete this item?")) {
-                              deleteItemMutation.mutate(item.id);
-                            }
-                          }}
+                          onClick={() => deleteItemMutation.mutate(item.id)}
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    {item.description && (
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                        {item.description}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-2xl font-bold text-primary-600">
+                  <CardContent className="flex flex-col flex-1 justify-between">
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {item.description || "No description"}
+                    </p>
+                    <div className="mt-2 flex justify-between items-center">
+                      <span className="text-lg font-bold text-primary-600">
                         ₹{item.price_inr}
                       </span>
-                      <div className="flex gap-2">
-                        {item.veg && (
-                          <Badge className="bg-green-100 text-green-800">
-                            Veg
-                          </Badge>
-                        )}
-                        {item.available ? (
-                          <Badge className="bg-blue-100 text-blue-800">
-                            Available
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Unavailable</Badge>
-                        )}
-                      </div>
+                      <Badge
+                        className={
+                          item.available
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }
+                      >
+                        {item.available ? "Available" : "Unavailable"}
+                      </Badge>
                     </div>
-                    {item.prep_time_minutes && (
-                      <p className="text-sm text-gray-500">
-                        ⏱️ {item.prep_time_minutes} mins
-                      </p>
-                    )}
                   </CardContent>
                 </Card>
               ))}
             </div>
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-gray-600">
-                  {searchQuery
-                    ? "No items match your search"
-                    : "No menu items yet. Add your first item!"}
-                </p>
-              </CardContent>
-            </Card>
           )}
         </main>
 
-        {/* Role Switcher */}
         {profile && (
           <RoleSwitcher currentRole="owner" userRole={profile.role} />
         )}

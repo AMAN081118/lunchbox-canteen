@@ -55,11 +55,17 @@ export default function LoginPage() {
       }
 
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Login error:", err);
-      setError(err.message || "Invalid email or password");
+      if (err instanceof Error) {
+        setError(err.message || "Invalid email or password");
+      } else {
+        setError("Invalid email or password");
+      }
+    } finally {
       setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
@@ -181,7 +187,7 @@ export default function LoginPage() {
               {/* Sign Up Link */}
               <div className="text-center">
                 <p className="text-sm text-gray-600">
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <button
                     type="button"
                     onClick={() => router.push("/signup")}

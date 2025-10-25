@@ -134,9 +134,13 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
       } else {
         router.push("/dashboard");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Signup error:", err);
-      setError(err.message || "Failed to create account. Please try again.");
+      if (err instanceof Error) {
+        setError(err.message || "Failed to create account. Please try again.");
+      } else {
+        setError("Failed to create account. Please try again.");
+      }
     } finally {
       setLoading(false);
     }

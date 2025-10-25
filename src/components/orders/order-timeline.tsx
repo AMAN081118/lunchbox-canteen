@@ -86,7 +86,7 @@ export function OrderTimeline({ status, createdAt }: OrderTimelineProps) {
                 {/* Icon Circle */}
                 <div
                   className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+                    "w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-all duration-300",
                     isCompleted
                       ? "bg-green-500 text-white"
                       : isCurrent

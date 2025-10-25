@@ -20,6 +20,40 @@ import { useEffect, useState } from "react";
 import { OrderTimeline } from "@/components/orders/order-timeline";
 import { FeedbackModal } from "@/components/orders/feedback-modal";
 
+interface Canteen {
+  id: string;
+  name: string;
+}
+
+interface OrderItem {
+  id: string;
+  name: string;
+  unit_price_inr: number;
+  quantity: number;
+  total_price_inr: number;
+}
+
+interface Order {
+  id: string;
+  user_id: string;
+  canteen_id: string;
+  status:
+    | "pending"
+    | "accepted"
+    | "in_preparation"
+    | "ready_for_pickup"
+    | "completed"
+    | "rejected"
+    | "cancelled";
+  total_price_inr: number;
+  payment_method: string;
+  payment_status: "paid" | "unpaid";
+  placed_at: string;
+  notes?: string;
+  canteens?: Canteen;
+  order_items?: OrderItem[];
+}
+
 export default function OrderDetailPage() {
   const { user, signOut } = useAuthContext();
   const router = useRouter();
@@ -34,36 +68,36 @@ export default function OrderDetailPage() {
     data: order,
     isLoading,
     refetch,
-  } = useQuery({
+  } = useQuery<Order>({
     queryKey: ["order", orderId],
     queryFn: async () => {
       const { data, error } = await supabaseClient
         .from("orders")
         .select(
           `
-          *,
-          canteens (
-            id,
-            name
-          ),
-          order_items (
-            id,
-            name,
-            unit_price_inr,
-            quantity,
-            total_price_inr
-          )
-        `,
+        *,
+        canteens (
+          id,
+          name
+        ),
+        order_items (
+          id,
+          name,
+          unit_price_inr,
+          quantity,
+          total_price_inr
+        )
+      `,
         )
         .eq("id", orderId)
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Order;
     },
   });
 
-  // ✅ FIXED: Check localStorage AND database for feedback submission
+  // FIXED: Check localStorage AND database for feedback submission
   useEffect(() => {
     const checkFeedback = async () => {
       if (!order?.order_items) return;
@@ -78,8 +112,7 @@ export default function OrderDetailPage() {
         return;
       }
 
-      // Check database as backup
-      const orderItemIds = order.order_items.map((item: any) => item.id);
+      const orderItemIds = order.order_items.map((item: OrderItem) => item.id);
       const { data: existingFeedback } = await supabaseClient
         .from("feedback")
         .select("id")
@@ -87,7 +120,6 @@ export default function OrderDetailPage() {
 
       if (existingFeedback && existingFeedback.length > 0) {
         setFeedbackSubmitted(true);
-        // Save to localStorage for future visits
         localStorage.setItem(localStorageKey, "true");
       }
     };
@@ -118,7 +150,14 @@ export default function OrderDetailPage() {
         return () => clearTimeout(timer);
       }
     }
-  }, [order?.status, feedbackSubmitted, showFeedbackModal, orderId, user]);
+  }, [
+    order,
+    order?.status,
+    feedbackSubmitted,
+    showFeedbackModal,
+    orderId,
+    user,
+  ]);
 
   // Real-time subscription for order updates
   useEffect(() => {
@@ -141,7 +180,9 @@ export default function OrderDetailPage() {
             "Notification" in window &&
             Notification.permission === "granted"
           ) {
-            const newStatus = (payload.new as any).status;
+            const newStatus = (payload.new as { status: Order["status"] })
+              .status;
+
             const statusMessages: Record<string, string> = {
               accepted: "Your order has been confirmed! 🎉",
               in_preparation: "Your food is being prepared 👨‍🍳",
@@ -164,7 +205,7 @@ export default function OrderDetailPage() {
     return () => {
       supabaseClient.removeChannel(channel);
     };
-  }, [orderId, refetch]);
+  }, [order, orderId, refetch]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -277,7 +318,7 @@ export default function OrderDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {order.order_items?.map((item: any) => (
+                    {order.order_items?.map((item: OrderItem) => (
                       <div
                         key={item.id}
                         className="flex justify-between py-2 border-b last:border-0"

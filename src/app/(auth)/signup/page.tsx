@@ -42,7 +42,7 @@ export default function SignupPage() {
                 <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-600 transition-colors">
                   <User className="h-10 w-10 text-primary-600 group-hover:text-white transition-colors" />
                 </div>
-                <CardTitle className="text-2xl">I'm a Student</CardTitle>
+                <CardTitle className="text-2xl">I&apos;m a Student</CardTitle>
                 <CardDescription className="text-base mt-2">
                   Order delicious food from campus canteens
                 </CardDescription>
@@ -83,7 +83,9 @@ export default function SignupPage() {
                 <div className="w-20 h-20 bg-accent-orange/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-accent-orange transition-colors">
                   <Store className="h-10 w-10 text-accent-orange group-hover:text-white transition-colors" />
                 </div>
-                <CardTitle className="text-2xl">I'm a Canteen Owner</CardTitle>
+                <CardTitle className="text-2xl">
+                  I&apos;m a Canteen Owner
+                </CardTitle>
                 <CardDescription className="text-base mt-2">
                   Manage your canteen and grow your business
                 </CardDescription>

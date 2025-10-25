@@ -97,9 +97,14 @@ export default function CheckoutPage() {
 
       // Redirect to order confirmation
       router.push(`/orders/${order.id}`);
-    } catch (err: any) {
-      console.error("Order placement error:", err);
-      setError(err.message || "Failed to place order. Please try again.");
+    } catch (err: unknown) {
+      console.log("Order placement error:", err);
+      if (err instanceof Error) {
+        setError(err.message || "Failed to place order. Please try again.");
+      } else {
+        setError("Failed to place order. Please try again.");
+      }
+    } finally {
       setLoading(false);
     }
   };

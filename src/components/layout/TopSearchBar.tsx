@@ -29,24 +29,32 @@ export const TopSearchBar: React.FC<TopSearchBarProps> = ({
   onCanteenChange,
 }) => {
   return (
-    <section className="bg-gray-50 py-4">
+    <section className="py-4">
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center w-full bg-white rounded-md shadow-md border border-gray-200 h-14 overflow-hidden">
           {/* Location Dropdown Section */}
           <div className="flex items-center pl-4 pr-2 h-full">
             <MapPin className="h-5 w-5 text-red-500 mr-2 shrink-0" />
+
             <select
-              className="appearance-none bg-transparent border-none text-gray-800 font-semibold focus:outline-none cursor-pointer pr-6 text-sm"
               value={selectedCanteen}
               onChange={(e) => onCanteenChange(e.target.value)}
+              className="w-full appearance-none focus:outline-none px-4 py-2.5 pr-10 text-base font-semibold text-gray-900 cursor-pointer"
             >
-              <option value="all">All Canteens</option>
+              <option value="all" className="text-gray-700">
+                All Canteens
+              </option>
               {canteens.map((canteen) => (
-                <option key={canteen.id} value={canteen.id}>
+                <option
+                  key={canteen.id}
+                  value={canteen.id}
+                  className="text-gray-700"
+                >
                   {canteen.name}
                 </option>
               ))}
             </select>
+
             <ChevronDown className="h-4 w-4 text-gray-400 -ml-5 pointer-events-none" />
           </div>
 

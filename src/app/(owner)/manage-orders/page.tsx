@@ -26,6 +26,42 @@ import { ArrowLeft, Star } from "lucide-react";
 import { useEffect } from "react";
 import { RoleSwitcher } from "@/components/layout/role-switcher";
 
+interface Feedback {
+  order_item_id: string;
+  rating: number;
+  comment: string | null;
+}
+
+interface OrderItem {
+  id: string;
+  order_id: string;
+  menu_item_id: string;
+  name: string;
+  unit_price_inr: number;
+  quantity: number;
+  total_price_inr: number;
+  created_at: string;
+  feedback?: Feedback | null;
+}
+
+interface UserProfile {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+}
+
+interface Order {
+  id: string;
+  user_id: string;
+  canteen_id: string;
+  status: OrderStatus;
+  placed_at: string;
+  total_price_inr: number;
+  notes?: string | null;
+  order_items: OrderItem[];
+  user_profile?: UserProfile;
+}
+
 type OrderStatus =
   | "pending"
   | "accepted"
@@ -72,13 +108,12 @@ export default function OwnerOrdersPage() {
     enabled: !!user?.id && profile?.role === "owner",
   });
 
-  // ✅ FIXED: Fetch orders with proper profile join
-  const { data: orders, isLoading } = useQuery({
+  // FIXED: Fetch orders with proper profile join
+  const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["owner-orders", canteenOwner?.canteen_id],
     queryFn: async () => {
       if (!canteenOwner?.canteen_id) return [];
 
-      // First fetch orders
       const { data: ordersData, error: ordersError } = await supabaseClient
         .from("orders")
         .select("*")
@@ -88,26 +123,25 @@ export default function OwnerOrdersPage() {
       if (ordersError) throw ordersError;
       if (!ordersData) return [];
 
-      // Then fetch user profiles separately
       const userIds = [...new Set(ordersData.map((order) => order.user_id))];
       const { data: profilesData } = await supabaseClient
         .from("profiles")
         .select("id, full_name, phone")
         .in("id", userIds);
 
-      const profileMap = new Map(profilesData?.map((p) => [p.id, p]) || []);
+      const profileMap = new Map(
+        (profilesData || []).map((p: UserProfile) => [p.id, p]),
+      );
 
-      // Fetch order items for each order
-      const ordersWithDetails = await Promise.all(
+      const ordersWithDetails: Order[] = await Promise.all(
         ordersData.map(async (order) => {
-          // Get order items
           const { data: orderItems } = await supabaseClient
             .from("order_items")
             .select("*")
             .eq("order_id", order.id);
 
-          // Get feedback for completed orders
-          let itemsWithFeedback = orderItems || [];
+          let itemsWithFeedback: OrderItem[] = orderItems || [];
+
           if (order.status === "completed" && orderItems) {
             const itemIds = orderItems.map((item) => item.id);
             const { data: feedbackData } = await supabaseClient
@@ -116,12 +150,12 @@ export default function OwnerOrdersPage() {
               .in("order_item_id", itemIds);
 
             const feedbackMap = new Map(
-              feedbackData?.map((f) => [f.order_item_id, f]) || [],
+              (feedbackData || []).map((f: Feedback) => [f.order_item_id, f]),
             );
 
             itemsWithFeedback = orderItems.map((item) => ({
               ...item,
-              feedback: feedbackMap.get(item.id),
+              feedback: feedbackMap.get(item.id) || null,
             }));
           }
 
@@ -281,7 +315,7 @@ export default function OwnerOrdersPage() {
                         <CardTitle className="text-lg">
                           Order #{order.id.slice(0, 8)}
                         </CardTitle>
-                        {/* ✅ FIXED: Use user_profile instead of profiles */}
+                        {/* FIXED: Use user_profile instead of profiles */}
                         <CardDescription>
                           {order.user_profile?.full_name || "Unknown"} •{" "}
                           {order.user_profile?.phone || "N/A"}
@@ -306,7 +340,7 @@ export default function OwnerOrdersPage() {
                       <p className="font-semibold text-sm text-gray-700">
                         Items:
                       </p>
-                      {order.order_items?.map((item: any) => (
+                      {order.order_items?.map((item: OrderItem) => (
                         <div key={item.id} className="text-sm">
                           <div className="flex justify-between">
                             <span className="text-gray-600">
@@ -316,15 +350,15 @@ export default function OwnerOrdersPage() {
                               ₹{item.total_price_inr}
                             </span>
                           </div>
-                          {/* Show feedback if exists */}
+
                           {item.feedback && (
                             <div className="mt-1 ml-4 flex items-start gap-2 text-xs">
-                              <div className="flex flex-shrink-0">
+                              <div className="flex shrink-0">
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <Star
                                     key={star}
                                     className={`h-3 w-3 ${
-                                      star <= (item.feedback.rating || 0)
+                                      star <= (item.feedback?.rating || 0)
                                         ? "fill-accent-yellow text-accent-yellow"
                                         : "text-gray-300"
                                     }`}
@@ -333,7 +367,7 @@ export default function OwnerOrdersPage() {
                               </div>
                               {item.feedback.comment && (
                                 <span className="text-gray-500 italic flex-1">
-                                  "{item.feedback.comment}"
+                                  “{item.feedback.comment}”
                                 </span>
                               )}
                             </div>

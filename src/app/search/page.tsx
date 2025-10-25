@@ -14,12 +14,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, MapPin, Plus, Minus } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
 import { useCartStore } from "@/store/cart-store";
+import Loader from "../Loader";
 
 export default function SearchPage() {
+  return (
+    <Suspense fallback={<Loader />}>
+      <SearchPageInner />
+    </Suspense>
+  );
+}
+function SearchPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || "";

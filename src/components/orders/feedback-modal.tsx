@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
 
 interface FeedbackModalProps {

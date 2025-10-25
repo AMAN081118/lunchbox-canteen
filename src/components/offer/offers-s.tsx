@@ -1,7 +1,7 @@
 // OfferBanner.tsx
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 
 // --- 1. TYPESCRIPT INTERFACE for Offer Data (Simulates CRM structure) ---
@@ -14,7 +14,6 @@ interface OfferData {
   linkText: string;
   imageUrl: string;
 }
-
 // --- 2. RANDOM DATA GENERATION FUNCTION ---
 const generateRandomOffer = (): OfferData => {
   const offers: OfferData[] = [
@@ -23,7 +22,7 @@ const generateRandomOffer = (): OfferData => {
       discount: "50%",
       offerType: "OFF",
       description: "on your dining bills with LunchBox",
-      linkHref: "/offers/dining-deals",
+      linkHref: "/canteens",
       linkText: "Check Dining Deals",
       imageUrl:
         "https://img.freepik.com/free-photo/delicious-chicken-rolls-stuffed-with-cheese-spinach-wrapped-strips-bacon-top-view_2829-17420.jpg?semt=ais_hybrid&w=740&q=80", // Placeholder for actual image
@@ -33,7 +32,7 @@ const generateRandomOffer = (): OfferData => {
       discount: "₹100",
       offerType: "Cashback",
       description: "on orders above ₹299",
-      linkHref: "/offers/cashback",
+      linkHref: "/canteens",
       linkText: "View Cashback T&C",
       imageUrl:
         "https://img.freepik.com/free-photo/delicious-chicken-rolls-stuffed-with-cheese-spinach-wrapped-strips-bacon-top-view_2829-17420.jpg?semt=ais_hybrid&w=740&q=80", // Placeholder
@@ -43,7 +42,7 @@ const generateRandomOffer = (): OfferData => {
       discount: "30%",
       offerType: "OFF",
       description: "on all breakfast items today!",
-      linkHref: "/offers/breakfast",
+      linkHref: "/canteens",
       linkText: "Order Breakfast",
       imageUrl:
         "https://img.freepik.com/free-photo/delicious-chicken-rolls-stuffed-with-cheese-spinach-wrapped-strips-bacon-top-view_2829-17420.jpg?semt=ais_hybrid&w=740&q=80", // Placeholder

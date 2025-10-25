@@ -103,11 +103,16 @@ export default function SettingsPage() {
 
   // Update canteen mutation
   const updateCanteenMutation = useMutation({
-    mutationFn: async (updates: any) => {
+    mutationFn: async (updates: Partial<{ name: string; gst_no: string }>) => {
+      if (!canteenOwner?.canteen_id) {
+        throw new Error("Canteen owner not loaded yet.");
+      }
+
       const { error } = await supabaseClient
         .from("canteens")
         .update(updates)
-        .eq("id", canteenOwner?.canteen_id);
+        .eq("id", canteenOwner.canteen_id);
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -118,11 +123,20 @@ export default function SettingsPage() {
 
   // Add announcement mutation
   const addAnnouncementMutation = useMutation({
-    mutationFn: async (announcement: any) => {
+    mutationFn: async (announcement: {
+      title: string;
+      message: string;
+      type: "info" | "warning" | "success" | "error";
+    }) => {
+      if (!canteenOwner?.canteen_id) {
+        throw new Error("Canteen owner not found or not loaded yet.");
+      }
+
       const { error } = await supabaseClient.from("announcements").insert({
         ...announcement,
-        canteen_id: canteenOwner?.canteen_id,
+        canteen_id: canteenOwner.canteen_id,
       });
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -262,7 +276,7 @@ export default function SettingsPage() {
                 <CardHeader>
                   <CardTitle>Canteen Information</CardTitle>
                   <CardDescription>
-                    Update your canteen's basic information
+                    Update your canteen&apos;s basic information
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -370,7 +384,11 @@ export default function SettingsPage() {
                         onChange={(e) =>
                           setAnnouncementForm({
                             ...announcementForm,
-                            type: e.target.value as any,
+                            type: e.target.value as
+                              | "info"
+                              | "success"
+                              | "warning"
+                              | "error",
                           })
                         }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"

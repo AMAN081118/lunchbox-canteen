@@ -2,27 +2,14 @@
 
 import { MainLayout } from "@/components/layout/main-layout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DishCard } from "@/components/menu/DishCard";
-import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  Clock,
-  MapPin,
-  Star,
-  TrendingUp,
-  Utensils,
-  Zap,
-} from "lucide-react";
+import { Clock, Utensils, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
-import Image from "next/image";
-import Recommendation from "@/components/offer/Recommendation";
 import Offers from "@/components/offer/offers-s";
 import { CanteenCard } from "@/components/canteen/CanteenCard";
-import { HeroSearchBar } from "@/components/layout/HeroSearchBar";
 import { TopSearchBar } from "@/components/layout/TopSearchBar";
 
 export default function LandingPage() {
@@ -35,7 +22,17 @@ export default function LandingPage() {
     queryFn: async () => {
       const { data, error } = await supabaseClient
         .from("canteens")
-        .select("id,name")
+        .select(
+          `
+    id,
+    name,
+    img_url,
+    hostels:based_hostel_id (
+      id,
+      name
+    )
+  `,
+        )
         .eq("is_active", true)
         .limit(6);
 
@@ -70,6 +67,7 @@ export default function LandingPage() {
         `,
         )
         .eq("available", true)
+        .order("times_ordered", { ascending: false })
         .limit(8);
 
       if (error) throw error;
@@ -87,7 +85,6 @@ export default function LandingPage() {
         selectedCanteen={selectedCanteen}
         onCanteenChange={setSelectedCanteen}
       />
-      {/* <Recommendation /> */}
       <Offers />
       {/* Hero Section */}
       <section className="hidden relative bg-food-gradient text-white overflow-hidden">
@@ -100,7 +97,7 @@ export default function LandingPage() {
               <span className="text-accent-yellow">Canteen</span>
             </h1>
             <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Don't wait in Line... Order from your favorite canteens.
+              Don&apos;t wait in Line... Order from your favorite canteens.
             </p>
 
             {/* Search Bar */}
@@ -165,8 +162,26 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      {/* Trending Dishes */}
+      <section className="py-8 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Trending Dishes
+            </h2>
+            <p className="text-gray-600">Most ordered items this week</p>
+          </div>
+
+          {/* 2. Update Grid for better spacing & use the new DishCard */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {popularItems?.slice(0, 8).map((item) => (
+              <DishCard key={item.id} item={item} />
+            ))}
+          </div>
+        </div>
+      </section>
       {/* Popular Canteens */}
-      <section className="py-8 bg-gray-50">
+      <section className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -187,7 +202,6 @@ export default function LandingPage() {
           {/* 2. Use the new CanteenCard in the grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {canteens?.map((canteen) => (
-              // The canteen object from your API is passed directly
               <CanteenCard key={canteen.id} canteen={canteen} />
             ))}
           </div>
@@ -199,25 +213,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      ;{/* Popular Dishes */}
-      <section className="py-16 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Trending Dishes
-            </h2>
-            <p className="text-gray-600">Most ordered items this week</p>
-          </div>
-
-          {/* 2. Update Grid for better spacing & use the new DishCard */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {popularItems?.slice(0, 8).map((item) => (
-              <DishCard key={item.id} item={item} />
-            ))}
-          </div>
-        </div>
-      </section>
-      ;{/* CTA Section */}
+      ; ;{/* CTA Section */}
       <section className="hidden py-20 bg-linear-to-r from-primary-600 to-accent-orange text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 ">

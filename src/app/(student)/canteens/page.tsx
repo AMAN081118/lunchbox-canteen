@@ -18,9 +18,23 @@ export default function CanteensPage() {
     queryFn: async () => {
       const { data, error } = await supabaseClient
         .from("canteens")
-        .select("*")
+        .select(
+          `
+    id,
+    name,
+    img_url,
+    is_active,
+    total_sales,
+    gst_no,
+    created_at,
+    based_hostel_id,
+    hostels:based_hostel_id (
+      id,
+      name
+    )
+  `,
+        )
         .order("name");
-
       if (error) throw error;
       return data;
     },

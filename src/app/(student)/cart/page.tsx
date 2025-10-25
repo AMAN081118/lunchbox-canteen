@@ -10,7 +10,7 @@ import { useCartStore } from "@/store/cart-store";
 import { ArrowLeft, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 
 export default function CartPage() {
-  const { user, signOut } = useAuthContext();
+  const { signOut } = useAuthContext();
   const router = useRouter();
   const {
     items,

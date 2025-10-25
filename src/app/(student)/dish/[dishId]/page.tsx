@@ -11,6 +11,8 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Star, Clock, Plus, Minus, MapPin } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
+import Image from "next/image";
+import { fullUrl } from "@/lib/supabase/bucket";
 
 export default function DishDetailPage() {
   const router = useRouter();
@@ -19,7 +21,7 @@ export default function DishDetailPage() {
   const { addItem, updateQuantity, getItemQuantity } = useCartStore();
 
   // Fetch dish details
-  const { data: dish, isLoading } = useQuery({
+  const { data: dish, isLoading: isDishLoading } = useQuery({
     queryKey: ["dish", dishId],
     queryFn: async () => {
       const { data, error } = await supabaseClient
@@ -41,37 +43,32 @@ export default function DishDetailPage() {
     },
   });
 
-  // ✅ FIXED: Fetch feedback for this menu item from order_items
-  const { data: feedback } = useQuery({
+  // Fetch feedback for this dish
+  const { data: feedback = [], isLoading: isFeedbackLoading } = useQuery({
     queryKey: ["feedback", dishId],
     queryFn: async () => {
-      // First get order_items for this menu item
-      const { data: orderItems, error: orderItemsError } = await supabaseClient
-        .from("order_items")
-        .select("id")
-        .eq("menu_item_id", dishId);
-
-      if (orderItemsError || !orderItems) return [];
-
-      const orderItemIds = orderItems.map((item) => item.id);
-      if (orderItemIds.length === 0) return [];
-
-      // Then get feedback for those order items
-      const { data: feedbackData, error: feedbackError } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from("feedback")
         .select(
           `
-          *,
+          id,
+          rating,
+          comment,
+          created_at,
           profiles:profile_id (
             full_name
           )
         `,
         )
-        .in("order_item_id", orderItemIds)
+        .eq("menu_item_id", dishId)
         .order("created_at", { ascending: false });
 
-      if (feedbackError) return [];
-      return feedbackData;
+      if (error) {
+        console.error("Error fetching feedback:", error);
+        return [];
+      }
+      console.log(data);
+      return data;
     },
   });
 
@@ -82,7 +79,7 @@ export default function DishDetailPage() {
     addItem({
       id: dish.id,
       name: dish.name,
-      price: parseFloat(dish.price_inr.toString()), // ✅ FIXED: Convert to string then parse
+      price: parseFloat(dish.price_inr.toString()),
       canteenId: dish.canteen_id,
       canteenName: dish.canteens?.name || "",
       veg: dish.veg,
@@ -99,15 +96,7 @@ export default function DishDetailPage() {
     updateQuantity(dish.id, quantity - 1);
   };
 
-  const avgRating =
-    feedback && feedback.length > 0
-      ? (
-          feedback.reduce((sum, f) => sum + (f.rating || 0), 0) /
-          feedback.length
-        ).toFixed(1)
-      : "N/A";
-
-  if (isLoading) {
+  if (isDishLoading) {
     return (
       <ProtectedRoute redirectTo="/login">
         <MainLayout>
@@ -140,8 +129,18 @@ export default function DishDetailPage() {
           <Card className="overflow-hidden border-0 shadow-xl mb-6 animate-slide-up">
             <div className="grid md:grid-cols-2 gap-6">
               {/* Image Section */}
-              <div className="relative h-64 md:h-full bg-gradient-to-br from-primary-400 to-accent-orange flex items-center justify-center">
-                <span className="text-9xl">{dish.veg ? "🥗" : "🍗"}</span>
+              <div className="relative h-64 md:h-full bg-linear-to-br from-primary-400 to-accent-orange flex items-center justify-center">
+                <Image
+                  src={
+                    dish.image_path
+                      ? `${fullUrl}${dish.image_path}`
+                      : `https://placehold.co/400x300?text=${dish.name}`
+                  }
+                  alt={dish.name}
+                  className="w-full h-40 object-cover"
+                  fill
+                  loading="lazy"
+                />
                 {dish.veg && (
                   <Badge className="absolute top-4 left-4 bg-green-100 text-green-800">
                     Vegetarian
@@ -172,10 +171,12 @@ export default function DishDetailPage() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="flex items-center gap-1 bg-green-100 px-3 py-1 rounded-lg">
                     <Star className="h-5 w-5 fill-accent-yellow text-accent-yellow" />
-                    <span className="font-bold">{avgRating}</span>
+                    <span className="font-bold">
+                      {dish.avg_rating === 0 ? "N/A" : dish.avg_rating}
+                    </span>
                   </div>
                   <span className="text-sm text-gray-600">
-                    ({feedback?.length || 0} ratings)
+                    ({feedback.length} ratings)
                   </span>
                 </div>
 
@@ -252,34 +253,54 @@ export default function DishDetailPage() {
           {/* Reviews Section */}
           <Card>
             <CardHeader>
-              <CardTitle>Customer Reviews</CardTitle>
+              <CardTitle className="mt-4">Customer Reviews</CardTitle>
             </CardHeader>
             <CardContent>
-              {feedback && feedback.length > 0 ? (
+              {isFeedbackLoading ? (
+                <Skeleton className="h-40 w-full" />
+              ) : feedback.length > 0 ? (
                 <div className="space-y-4">
                   {feedback.map((review) => (
                     <div
                       key={review.id}
                       className="border-b pb-4 last:border-0"
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <Star
-                              key={star}
-                              className={`h-4 w-4 ${
-                                star <= (review.rating || 0)
-                                  ? "fill-accent-yellow text-accent-yellow"
-                                  : "text-gray-300"
-                              }`}
-                            />
-                          ))}
+                      {/* --- START: Improved Review Header --- */}
+                      <div className="flex justify-between items-center mb-2">
+                        {/* Left Side: Name + Rating */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {review.profiles?.full_name || "Anonymous"}
+                          </span>
+                          <div className="flex">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`h-4 w-4 ${
+                                  star <= (review.rating || 0)
+                                    ? "fill-accent-yellow text-accent-yellow"
+                                    : "text-gray-300"
+                                }`}
+                              />
+                            ))}
+                          </div>
                         </div>
-                        <span className="text-sm font-medium">
-                          {review.profiles?.full_name || "Anonymous"}
+
+                        {/* Right Side: Formatted Date */}
+                        <span className="text-xs text-gray-500">
+                          {new Date(review.created_at).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            },
+                          )}
                         </span>
                       </div>
-                      {/* ✅ FIXED: Use 'comment' instead of 'comments' */}
+                      {/* --- END: Improved Review Header --- */}
+
+                      {/* Comment */}
                       {review.comment && (
                         <p className="text-sm text-gray-600">
                           {review.comment}

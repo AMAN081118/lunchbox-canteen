@@ -4,13 +4,6 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 import { useAuthContext } from "@/contexts/auth-context";
 import { AlertCircle, Info, CheckCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useRouter, useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -18,9 +11,21 @@ import { supabaseClient } from "@/lib/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowLeft, ShoppingCart, Plus, Minus } from "lucide-react";
 import { useCartStore } from "@/store/cart-store";
+import Image from "next/image";
+
+interface MenuItem {
+  id: string;
+  name: string;
+  description: string | null;
+  price_inr: number;
+  image_path: string | null;
+  veg: boolean;
+}
+import { fullUrl } from "@/lib/supabase/bucket";
+import Loader from "@/app/Loader";
 
 export default function MenuPage() {
-  const { user, signOut } = useAuthContext();
+  const { signOut } = useAuthContext();
   const router = useRouter();
   const params = useParams();
   const canteenId = params.canteenId as string;
@@ -104,21 +109,32 @@ export default function MenuPage() {
       return data;
     },
   });
+  // const [showLoader, setShowLoader] = useState(true);
+
+  // useEffect(() => {
+  //   if (!isLoading) {
+  //     const timer = setTimeout(() => setShowLoader(false), 500); // wait for fade-out
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [isLoading]);
+  if (isLoading) {
+    return <Loader />; // shows your translucent glassy loader on top
+  }
 
   const handleSignOut = async () => {
     await signOut();
     router.push("/login");
   };
 
-  const handleAddToCart = (item: any) => {
+  const handleAddToCart = (item: MenuItem) => {
     addItem({
       id: item.id,
       name: item.name,
-      price: parseFloat(item.price_inr),
+      price: item.price_inr,
       canteenId: canteenId,
       canteenName: canteen?.name || "",
       veg: item.veg,
-      image_path: item.image_path,
+      image_path: item.image_path || undefined,
     });
   };
 
@@ -167,12 +183,11 @@ export default function MenuPage() {
               </div>
               <div className="flex items-center gap-4">
                 <Button
-                  variant="default"
                   onClick={() => router.push("/cart")}
-                  className="relative"
+                  className="relative bg-red-500"
                 >
-                  <ShoppingCart className="h-5 w-5 mr-2" />
-                  Cart
+                  <ShoppingCart className="h-5 w-5 sm:mr-2" />
+                  <span className="hidden sm:block">Cart</span>
                   {cartItemsCount > 0 && (
                     <Badge className="ml-2 bg-red-500">{cartItemsCount}</Badge>
                   )}
@@ -231,74 +246,101 @@ export default function MenuPage() {
                     const quantity = getItemQuantity(item.id);
 
                     return (
-                      <Card
+                      <div
                         key={item.id}
-                        className="hover:shadow-md transition"
+                        className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] flex flex-col group"
                       >
-                        <CardHeader>
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <CardTitle className="text-lg">
-                                {item.name}
-                              </CardTitle>
-                              {item.description && (
-                                <CardDescription className="mt-1">
-                                  {item.description}
-                                </CardDescription>
-                              )}
-                            </div>
-                            {item.veg && (
-                              <Badge
-                                variant="secondary"
-                                className="bg-green-100 text-green-800 ml-2"
-                              >
-                                Veg
-                              </Badge>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex items-center justify-between">
+                        {/* 1. Image with Badge */}
+                        <div className="relative  w-full h-40">
+                          <Image
+                            src={
+                              item.image_path
+                                ? `${fullUrl}${item.image_path}`
+                                : `https://placehold.co/400x300?text=${item.name}`
+                            }
+                            alt={item.name}
+                            className="w-full h-40 object-cover"
+                            fill
+                            priority={false}
+                          />
+
+                          {/* Using Badge style and logic from example 1 */}
+                          <Badge
+                            className={`absolute top-2 left-2 ${
+                              item.veg
+                                ? "bg-green-100 text-green-800 border-green-200"
+                                : "bg-red-100 text-red-800 border-red-200"
+                            }`}
+                          >
+                            {item.veg ? "Veg" : "Non-Veg"}
+                          </Badge>
+                        </div>
+
+                        {/* 2. Content Layout with flex-grow */}
+                        <div className="p-4 flex flex-col grow">
+                          {/* Title */}
+                          <h3 className="font-bold text-gray-900 mb-1 line-clamp-2 text-2xl">
+                            {item.name}
+                          </h3>
+
+                          {/* Description (from example 2) */}
+                          {item.description && (
+                            <p className="text-sm text-gray-500 line-clamp-2 mb-2">
+                              {item.description}
+                            </p>
+                          )}
+
+                          {/* 3. Bottom section (pushed down) */}
+                          <div className="mt-auto flex items-center justify-between">
+                            {/* Left Side: Price + Prep Time */}
                             <div>
-                              <p className="text-2xl font-bold text-gray-900">
+                              <span className="text-xl font-bold text-gray-800">
                                 ₹{item.price_inr}
-                              </p>
+                              </span>
                               {item.prep_time_minutes && (
-                                <p className="text-sm text-gray-500">
-                                  {item.prep_time_minutes} mins
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                  <span>Time:</span> {item.prep_time_minutes}{" "}
+                                  mins
                                 </p>
                               )}
                             </div>
+
+                            {/* Right Side: Add/Remove Buttons (from example 2) */}
                             <div className="flex items-center gap-2">
                               {quantity > 0 ? (
                                 <>
                                   <Button
                                     variant="outline"
                                     size="icon"
+                                    className="rounded-full"
                                     onClick={() => handleDecrement(item.id)}
                                   >
                                     <Minus className="h-4 w-4" />
                                   </Button>
-                                  <span className="w-8 text-center font-semibold">
+                                  <span className="w-6 text-center font-semibold">
                                     {quantity}
                                   </span>
                                   <Button
                                     variant="outline"
                                     size="icon"
+                                    className="rounded-full"
                                     onClick={() => handleIncrement(item.id)}
                                   >
                                     <Plus className="h-4 w-4" />
                                   </Button>
                                 </>
                               ) : (
-                                <Button onClick={() => handleAddToCart(item)}>
+                                <Button
+                                  onClick={() => handleAddToCart(item)}
+                                  className="rounded-full px-5 py-2 text-sm font-semibold bg-primary-600 hover:bg-primary-700 text-white"
+                                >
                                   Add
                                 </Button>
                               )}
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
