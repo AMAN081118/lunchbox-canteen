@@ -285,7 +285,7 @@ export default function OrderDetailPage() {
 
               {/* Canteen Info */}
               <Card>
-                <CardHeader className="pb-3">
+                <CardHeader className="p-4">
                   <div className="flex items-start justify-between">
                     <div>
                       <CardTitle className="text-xl">
@@ -293,7 +293,7 @@ export default function OrderDetailPage() {
                       </CardTitle>
                       <CardDescription className="mt-1 flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
-                        Campus Location
+                        IIITDMJ
                       </CardDescription>
                     </div>
                     <Badge
@@ -319,7 +319,7 @@ export default function OrderDetailPage() {
 
               {/* Order Items */}
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4">
                   <CardTitle>Order Items</CardTitle>
                   <CardDescription>
                     Placed on{" "}
@@ -363,7 +363,7 @@ export default function OrderDetailPage() {
 
               {/* Payment & Notes */}
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4">
                   <CardTitle>Additional Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
