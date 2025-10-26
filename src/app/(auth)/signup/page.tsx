@@ -24,7 +24,7 @@ export default function SignupPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 pt-4 pb-12 px-4">
         <div className="max-w-4xl w-full">
           <div className="text-center mb-12 animate-fade-in">
             <h1 className="text-4xl font-bold text-gray-900 mb-3">
@@ -39,7 +39,7 @@ export default function SignupPage() {
             {/* Student Card */}
             <Card className="border-2 hover:border-primary-600 hover:shadow-xl transition-all duration-300 cursor-pointer group">
               <CardHeader className="text-center pb-4">
-                <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-600 transition-colors">
+                <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary-600 transition-colors mt-2">
                   <User className="h-10 w-10 text-primary-600 group-hover:text-white transition-colors" />
                 </div>
                 <CardTitle className="text-2xl">I&apos;m a Student</CardTitle>
@@ -80,7 +80,7 @@ export default function SignupPage() {
             {/* Owner Card */}
             <Card className="border-2 hover:border-accent-orange hover:shadow-xl transition-all duration-300 cursor-pointer group">
               <CardHeader className="text-center pb-4">
-                <div className="w-20 h-20 bg-accent-orange/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-accent-orange transition-colors">
+                <div className="w-20 h-20 mt-2 bg-accent-orange/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-accent-orange transition-colors">
                   <Store className="h-10 w-10 text-accent-orange group-hover:text-white transition-colors" />
                 </div>
                 <CardTitle className="text-2xl">

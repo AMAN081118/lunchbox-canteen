@@ -70,16 +70,16 @@ export default function LoginPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-accent-orange/10 py-12 px-4">
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-linear-to-br from-primary-50 via-white to-accent-orange/10 py-12 px-4">
         <Card className="w-full max-w-md border-0 shadow-2xl animate-slide-up">
-          <CardHeader className="space-y-1 pb-6">
-            <div className="w-16 h-16 bg-gradient-to-r from-primary-600 to-accent-orange rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <CardHeader className="space-y-1 pb-4 pt-2">
+            <div className="w-16 h-16 bg-linear-to-r from-primary-600 to-accent-orange rounded-2xl flex items-center justify-center mx-auto mb-4">
               <span className="text-3xl">🍽️</span>
             </div>
             <CardTitle className="text-3xl text-center font-bold">
               Welcome Back
             </CardTitle>
-            <CardDescription className="text-center text-base">
+            <CardDescription className="text-center">
               Login to continue to LunchBox
             </CardDescription>
           </CardHeader>
@@ -175,7 +175,7 @@ export default function LoginPage() {
               </Button>
 
               {/* Divider */}
-              <div className="relative my-6">
+              <div className="relative my-2">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200"></div>
                 </div>

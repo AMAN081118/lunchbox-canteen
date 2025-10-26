@@ -86,7 +86,7 @@ export default function CartPage() {
               {/* Cart Items */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Items</CardTitle>
+                  <CardTitle className="p-4">Items</CardTitle>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -168,7 +168,7 @@ export default function CartPage() {
 
               {/* Order Summary */}
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4">
                   <CardTitle>Order Summary</CardTitle>
                 </CardHeader>
                 <CardContent>

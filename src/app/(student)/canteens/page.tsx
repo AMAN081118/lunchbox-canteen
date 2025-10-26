@@ -28,6 +28,7 @@ export default function CanteensPage() {
     gst_no,
     created_at,
     based_hostel_id,
+    rating,
     hostels:based_hostel_id (
       id,
       name

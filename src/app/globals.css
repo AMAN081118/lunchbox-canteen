@@ -241,3 +241,29 @@
 .animate-trackShine {
   animation: trackShine 1.6s linear infinite;
 }
+@utility scrollbar-elegant-thumb {
+  /* For Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-400) transparent;
+
+  /* For Chrome, Safari, and Edge */
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--color-gray-400);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-gray-500);
+  }
+  &::-webkit-scrollbar-button {
+    display: none;
+  }
+}

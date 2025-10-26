@@ -1,11 +1,11 @@
-// In a new file, e.g., components/menu/DishCard.tsx
+// components/menu/DishCard.tsx
+
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
 import { MapPin } from "lucide-react";
 import Image from "next/image";
 import { fullUrl } from "@/lib/supabase/bucket";
 
-// Define the type for a single item for clarity
 interface PopularItem {
   id: string;
   canteen_id: string;
@@ -31,8 +31,8 @@ export const DishCard: React.FC<DishCardProps> = ({ item }) => {
       onClick={() => router.push(`/menu/${item.canteen_id}`)}
       className="bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] flex flex-col cursor-pointer group"
     >
-      {/* 1. Proper Image with Lazy Loading */}
-      <div className="relative w-full h-40 object-cover">
+      {/* Image with Veg/Non-Veg Badge */}
+      <div className="relative w-full h-40">
         <Image
           src={
             item.image_path
@@ -44,7 +44,6 @@ export const DishCard: React.FC<DishCardProps> = ({ item }) => {
           priority={false}
           fill
         />
-        {/* Veg/Non-Veg Badge remains */}
         <Badge
           className={`absolute top-2 left-2 ${
             item.veg
@@ -56,27 +55,33 @@ export const DishCard: React.FC<DishCardProps> = ({ item }) => {
         </Badge>
       </div>
 
-      {/* 2. Improved Content Layout & Spacing */}
+      {/* Card Content */}
       <div className="p-4 flex flex-col grow">
         <h3 className="font-bold text-gray-900 mb-1 line-clamp-2 text-2xl">
           {item.name}
         </h3>
-        {item.description ? <p>{item.description}</p> : ``}
-        {/* <div className="flex align-middle">
-          <MapPin className="h-4 w-4 text-red-500 mr-2 shrink-0" />
-          
-        </div> */}
-        <p className="flex items-center gap-2 text-sm text-gray-500">
-          <MapPin className="h-3.5 w-3.5 text-red-500" />
-          {item.canteens?.name}
-        </p>
+        {/* Description: 2-line ellipsis */}
+        {item.description && (
+          <p className="mb-2 text-gray-700 text-base line-clamp-2">
+            {item.description}
+          </p>
+        )}
 
-        {/* 3. Pushed to the bottom using flexbox */}
-        <div className="mt-auto flex items-center justify-between">
-          <span className="text-xl font-extrabold text-gray-800">
-            ₹{item.price_inr}
-          </span>
-          <span className="text-xs font-semibold text-green-600">Popular</span>
+        {/* Spacer pushes price/canteen label to the bottom */}
+        <div className="mt-auto">
+          <p className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+            <MapPin className="h-3.5 w-3.5 text-red-500" />
+            {item.canteens?.name}
+          </p>
+          <div className="flex items-center justify-between">
+            <span className="text-xl font-extrabold text-gray-800">
+              ₹{item.price_inr}
+            </span>
+            <span className="text-xs font-semibold text-green-600">
+              Popular
+            </span>
+          </div>
+          {/* Canteen label below price+badge */}
         </div>
       </div>
     </div>

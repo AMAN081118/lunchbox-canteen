@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { X, User, Mail, Phone, Lock, Building2, MapPin } from "lucide-react";
+import { X, User, Mail, Phone, Building2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 
@@ -18,10 +18,12 @@ interface SignupModalProps {
 
 export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
   const router = useRouter();
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [validEmail, setValidEmail] = useState(true);
+  const [formValid, setFormValid] = useState(false);
 
-  // Form state
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -29,11 +31,12 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
     password: "",
     confirmPassword: "",
     gender: "",
-    hostelId: "", // For students
-    canteenId: "", // For owners
+    hostelId: "",
+    canteenName: "",
+    gstNo: "",
+    basedHostelId: "",
   });
 
-  // Fetch hostels for student signup
   const { data: hostels } = useQuery({
     queryKey: ["hostels"],
     queryFn: async () => {
@@ -41,61 +44,62 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
       if (error) throw error;
       return data;
     },
-    enabled: userType === "student" && isOpen,
+    enabled: isOpen,
   });
 
-  // Fetch canteens for owner signup
-  const { data: canteens } = useQuery({
-    queryKey: ["canteens-for-owner"],
-    queryFn: async () => {
-      const { data, error } = await supabaseClient.from("canteens").select("*");
-      if (error) throw error;
-      return data;
-    },
-    enabled: userType === "owner" && isOpen,
-  });
+  // Validate inputs dynamically
+  useEffect(() => {
+    setError(null);
+
+    const isEmailValid =
+      userType === "student"
+        ? /^[a-zA-Z0-9._%+-]+@iiitdmj\.ac\.in$/i.test(formData.email)
+        : formData.email.includes("@") && formData.email.includes(".");
+    setValidEmail(isEmailValid);
+
+    const requiredFields =
+      userType === "student"
+        ? [
+            formData.fullName,
+            formData.email,
+            formData.phone,
+            formData.gender,
+            formData.password,
+            formData.confirmPassword,
+            formData.hostelId,
+          ]
+        : [
+            formData.fullName,
+            formData.email,
+            formData.phone,
+            formData.gender,
+            formData.password,
+            formData.confirmPassword,
+            formData.canteenName,
+            formData.basedHostelId,
+          ];
+
+    const allFilled = requiredFields.every((f) => f.trim() !== "");
+    const passwordsMatch = formData.password === formData.confirmPassword;
+    const passwordStrong = formData.password.length >= 6;
+
+    setFormValid(allFilled && passwordsMatch && passwordStrong && isEmailValid);
+  }, [formData, userType]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formValid) return;
     setLoading(true);
     setError(null);
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
-      setLoading(false);
-      return;
-    }
-
-    if (userType === "student" && !formData.hostelId) {
-      setError("Please select your hostel");
-      setLoading(false);
-      return;
-    }
-
-    if (userType === "owner" && !formData.canteenId) {
-      setError("Please select your canteen");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Sign up with Supabase Auth
       const { data: authData, error: authError } =
         await supabaseClient.auth.signUp({
           email: formData.email,
@@ -105,68 +109,82 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
               full_name: formData.fullName,
               phone: formData.phone,
               gender: formData.gender,
-              role: userType, // 'student' or 'owner'
-              hostel_id: userType === "student" ? formData.hostelId : null,
+              role: userType,
+              hostel_id:
+                userType === "student"
+                  ? formData.hostelId
+                  : formData.basedHostelId,
               preferred_canteen_id: null,
             },
           },
         });
-
       if (authError) throw authError;
 
-      // If owner, create canteen_owners entry
-      if (userType === "owner" && authData.user) {
+      const userId = authData?.user?.id;
+      if (!userId) throw new Error("Signup failed. Please try again.");
+
+      if (userType === "owner") {
+        const { data: canteen, error: canteenError } = await supabaseClient
+          .from("canteens")
+          .insert({
+            name: formData.canteenName,
+            gst_no: formData.gstNo || null,
+            based_hostel_id: formData.basedHostelId,
+          })
+          .select()
+          .single();
+        if (canteenError) throw canteenError;
+
         const { error: ownerError } = await supabaseClient
           .from("canteen_owners")
           .insert({
-            canteen_id: formData.canteenId,
-            owner_profile_id: authData.user.id,
+            canteen_id: canteen.id,
+            owner_profile_id: userId,
           });
-
         if (ownerError) throw ownerError;
+
+        await supabaseClient
+          .from("profiles")
+          .update({
+            preferred_canteen_id: canteen.id,
+            hostel_id: formData.basedHostelId,
+          })
+          .eq("id", userId);
       }
 
-      // Success - close modal and redirect
       onClose();
-
-      if (userType === "student") {
-        router.push("/canteens");
-      } else {
-        router.push("/dashboard");
-      }
+      router.push(userType === "student" ? "/canteens" : "/dashboard");
     } catch (err: unknown) {
-      console.error("Signup error:", err);
+      console.error("Signup failed. Please try again.");
       if (err instanceof Error) {
-        setError(err.message || "Failed to create account. Please try again.");
+        setError(err.message || "Signup failed. Please try again.");
       } else {
-        setError("Failed to create account. Please try again.");
+        setError("Signup failed. Please try again.");
       }
     } finally {
       setLoading(false);
     }
+    setLoading(false);
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       ></div>
 
-      {/* Modal */}
       <div
         className={cn(
           "relative bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl",
-          "animate-slide-up transition-transform duration-300",
+          "animate-slide-up transition-transform duration-300 scrollbar-elegant-thumb",
         )}
         style={{
           animation: "slideUp 0.3s ease-out",
         }}
       >
-        {/* Close Button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition"
@@ -174,19 +192,17 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
           <X className="h-5 w-5" />
         </button>
 
-        {/* Header */}
         <div className="p-6 pb-4 border-b">
           <h2 className="text-2xl font-bold text-gray-900">
             {userType === "student" ? "Student Signup" : "Canteen Owner Signup"}
           </h2>
           <p className="text-sm text-gray-600 mt-1">
             {userType === "student"
-              ? "Create your account to start ordering"
-              : "Register your canteen on LunchBox"}
+              ? "Use your official @iiitdmj.ac.in email for verification"
+              : "Register your canteen and owner details"}
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
@@ -203,12 +219,10 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
             <Input
               id="fullName"
               name="fullName"
-              type="text"
               required
               value={formData.fullName}
               onChange={handleChange}
               placeholder="Enter your full name"
-              className="mt-1"
             />
           </div>
 
@@ -225,9 +239,24 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
               required
               value={formData.email}
               onChange={handleChange}
-              placeholder="your@email.com"
-              className="mt-1"
+              placeholder={
+                userType === "student"
+                  ? "yourname@iiitdmj.ac.in"
+                  : "your@email.com"
+              }
+              className={
+                !validEmail
+                  ? "border-red-500 focus:border-red-600 focus:ring-red-300"
+                  : "border-gray-300"
+              }
             />
+            {!validEmail && (
+              <p className="text-xs text-red-600 mt-1">
+                Please use a valid{" "}
+                {userType === "student" ? "@iiitdmj.ac.in" : ""}
+                email.
+              </p>
+            )}
           </div>
 
           {/* Phone */}
@@ -244,7 +273,6 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
               value={formData.phone}
               onChange={handleChange}
               placeholder="+91 1234567890"
-              className="mt-1"
             />
           </div>
 
@@ -257,7 +285,7 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
               required
               value={formData.gender}
               onChange={handleChange}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select Gender</option>
               <option value="male">Male</option>
@@ -266,7 +294,7 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
             </select>
           </div>
 
-          {/* Hostel (Student only) */}
+          {/* Student Hostel */}
           {userType === "student" && (
             <div>
               <Label htmlFor="hostelId" className="flex items-center gap-2">
@@ -279,7 +307,7 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
                 required
                 value={formData.hostelId}
                 onChange={handleChange}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <option value="">Select Your Hostel</option>
                 {hostels?.map((hostel) => (
@@ -291,37 +319,61 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
             </div>
           )}
 
-          {/* Canteen (Owner only) */}
+          {/* Owner Canteen Details */}
           {userType === "owner" && (
-            <div>
-              <Label htmlFor="canteenId" className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Canteen
-              </Label>
-              <select
-                id="canteenId"
-                name="canteenId"
-                required
-                value={formData.canteenId}
-                onChange={handleChange}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Select Your Canteen</option>
-                {canteens?.map((canteen) => (
-                  <option key={canteen.id} value={canteen.id}>
-                    {canteen.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div>
+                <Label
+                  htmlFor="canteenName"
+                  className="flex items-center gap-2"
+                >
+                  <MapPin className="h-4 w-4" />
+                  Canteen Name
+                </Label>
+                <Input
+                  id="canteenName"
+                  name="canteenName"
+                  required
+                  value={formData.canteenName}
+                  onChange={handleChange}
+                  placeholder="Canteen Name"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="gstNo">GST Number (optional)</Label>
+                <Input
+                  id="gstNo"
+                  name="gstNo"
+                  value={formData.gstNo}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="basedHostelId">Canteen Based Hostel</Label>
+                <select
+                  id="basedHostelId"
+                  name="basedHostelId"
+                  required
+                  value={formData.basedHostelId}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select Hostel</option>
+                  {hostels?.map((hostel) => (
+                    <option key={hostel.id} value={hostel.id}>
+                      {hostel.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
 
-          {/* Password */}
+          {/* Password Fields */}
           <div>
-            <Label htmlFor="password" className="flex items-center gap-2">
-              <Lock className="h-4 w-4" />
-              Password
-            </Label>
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               name="password"
@@ -330,19 +382,11 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
               value={formData.password}
               onChange={handleChange}
               placeholder="Minimum 6 characters"
-              className="mt-1"
             />
           </div>
 
-          {/* Confirm Password */}
           <div>
-            <Label
-              htmlFor="confirmPassword"
-              className="flex items-center gap-2"
-            >
-              <Lock className="h-4 w-4" />
-              Confirm Password
-            </Label>
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
             <Input
               id="confirmPassword"
               name="confirmPassword"
@@ -351,48 +395,22 @@ export function SignupModal({ isOpen, onClose, userType }: SignupModalProps) {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Re-enter password"
-              className="mt-1"
             />
           </div>
 
-          {/* Submit Button */}
           <Button
             type="submit"
-            disabled={loading}
-            className="w-full bg-primary-600 hover:bg-primary-700 h-12 text-lg font-semibold"
+            className={`w-full h-12 text-lg font-semibold ${
+              formValid
+                ? "bg-primary-600 hover:bg-primary-700"
+                : "bg-gray-300 cursor-not-allowed"
+            }`}
+            disabled={!formValid || loading}
           >
             {loading ? "Creating Account..." : "Sign Up"}
           </Button>
-
-          {/* Login Link */}
-          <p className="text-center text-sm text-gray-600">
-            Already have an account?{" "}
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                router.push("/login");
-              }}
-              className="text-primary-600 hover:underline font-medium"
-            >
-              Log In
-            </button>
-          </p>
         </form>
       </div>
-
-      <style jsx>{`
-        @keyframes slideUp {
-          from {
-            transform: translateY(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-      `}</style>
     </div>
   );
 }

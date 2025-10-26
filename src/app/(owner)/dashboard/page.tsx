@@ -137,7 +137,7 @@ export default function OwnerDashboardPage() {
     );
   }
 
-  // ✅ FIXED: Check if owner has a canteen assigned
+  // Check if owner has a canteen assigned
   if (!loadingOwner && !canteenOwner && profile?.role === "owner") {
     return (
       <ProtectedRoute redirectTo="/login">
@@ -168,7 +168,7 @@ export default function OwnerDashboardPage() {
           <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                   Owner Dashboard
                 </h1>
                 {canteenOwner && (
@@ -199,12 +199,14 @@ export default function OwnerDashboardPage() {
               {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Today&apos;s Orders</CardDescription>
+                  <CardHeader className="p-4">
+                    <CardDescription className="text-xl font-bold text-black">
+                      Today&apos;s Orders
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <div className="text-3xl font-bold">
+                      <div className="text-5xl font-bold">
                         {stats?.todayOrders || 0}
                       </div>
                       <Package className="h-8 w-8 text-blue-500" />
@@ -213,12 +215,14 @@ export default function OwnerDashboardPage() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Pending Orders</CardDescription>
+                  <CardHeader className="p-4">
+                    <CardDescription className="text-xl font-bold text-black">
+                      Pending Orders
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <div className="text-3xl font-bold">
+                      <div className="text-5xl font-bold">
                         {stats?.pendingOrders || 0}
                       </div>
                       <Clock className="h-8 w-8 text-yellow-500" />
@@ -227,12 +231,14 @@ export default function OwnerDashboardPage() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Today&apos;s Revenue</CardDescription>
+                  <CardHeader className="p-4">
+                    <CardDescription className="text-xl font-bold text-black">
+                      Today&apos;s Revenue
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <div className="text-3xl font-bold">
+                      <div className="text-5xl font-bold">
                         ₹{stats?.todayRevenue?.toFixed(0) || 0}
                       </div>
                       <TrendingUp className="h-8 w-8 text-green-500" />
@@ -241,12 +247,14 @@ export default function OwnerDashboardPage() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Total Orders</CardDescription>
+                  <CardHeader className="p-4">
+                    <CardDescription className="text-xl font-bold text-black">
+                      Total Orders
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center justify-between">
-                      <div className="text-3xl font-bold">
+                      <div className="text-5xl font-bold">
                         {stats?.totalOrders || 0}
                       </div>
                       <Store className="h-8 w-8 text-purple-500" />
@@ -261,28 +269,32 @@ export default function OwnerDashboardPage() {
                   className="cursor-pointer hover:shadow-lg transition"
                   onClick={() => router.push("/manage-orders")}
                 >
-                  <CardHeader>
-                    <CardTitle>Manage Orders</CardTitle>
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-2xl">Manage Orders</CardTitle>
                     <CardDescription>
                       View and update order status
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button className="w-full">View Orders</Button>
+                    <Button className="w-full bg-green-400 text-xl">
+                      View Orders
+                    </Button>
                   </CardContent>
                 </Card>
                 <Card
                   className="cursor-pointer hover:shadow-lg transition"
                   onClick={() => router.push("/menu-management")}
                 >
-                  <CardHeader>
-                    <CardTitle>Menu Management</CardTitle>
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-2xl">Menu Management</CardTitle>
                     <CardDescription>
                       Add, edit, or remove menu items
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button className="w-full">Manage Menu</Button>
+                    <Button className="w-full bg-red-500 text-xl">
+                      Manage Menu
+                    </Button>
                   </CardContent>
                 </Card>
                 {/* <Card
@@ -303,16 +315,22 @@ export default function OwnerDashboardPage() {
                   className="cursor-pointer hover:shadow-lg transition"
                   onClick={() => router.push("/settings")}
                 >
-                  <CardHeader>
-                    <CardTitle>Canteen Settings</CardTitle>
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-2xl">Canteen Settings</CardTitle>
                     <CardDescription>
                       Update canteen info and post announcements
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button className="w-full">Manage Settings</Button>
+                    <Button className="w-full text-xl">Manage Settings</Button>
                   </CardContent>
                 </Card>
+                <div className="h-20 w-full">
+                  <p>
+                    <span className="text-md font-semibold">Note:</span> Please
+                    Refresh to update data if required{" "}
+                  </p>
+                </div>
               </div>
             </>
           )}

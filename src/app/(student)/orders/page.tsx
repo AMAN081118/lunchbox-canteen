@@ -123,7 +123,7 @@ export default function OrdersPage() {
                   className="cursor-pointer hover:shadow-lg transition"
                   onClick={() => router.push(`/orders/${order.id}`)}
                 >
-                  <CardHeader>
+                  <CardHeader className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg">

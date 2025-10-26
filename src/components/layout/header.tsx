@@ -9,10 +9,12 @@ import { useCartStore } from "@/store/cart-store";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
+  const { profile } = useUserProfile();
   const { user, signOut } = useAuthContext();
   const { getTotalItems } = useCartStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -39,6 +41,19 @@ export function Header() {
           <nav className="hidden md:flex items-center space-x-1">
             {user ? (
               <>
+                {profile?.role === "owner" && (
+                  <Link
+                    href="/dashboard"
+                    className={cn(
+                      "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      isActive("/dashbaord")
+                        ? "bg-primary-50 text-primary-600"
+                        : "text-gray-700 hover:bg-gray-100",
+                    )}
+                  >
+                    Owner Dashboard
+                  </Link>
+                )}
                 <Link
                   href="/canteens"
                   className={cn(
@@ -74,7 +89,15 @@ export function Header() {
                     </Badge>
                   )}
                 </Button>
-                <Button variant="ghost" size="icon" className="ml-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-2"
+                  onClick={() => {
+                    if (!profile?.id) return;
+                    router.push(`/profile/${profile?.id}`);
+                  }}
+                >
                   <User className="h-5 w-5" />
                 </Button>
                 <Button
@@ -123,6 +146,19 @@ export function Header() {
             <nav className="flex flex-col space-y-2">
               {user ? (
                 <>
+                  {profile?.role === "owner" && (
+                    <Link
+                      href="/dashbaord"
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                        isActive("/dashboard")
+                          ? "bg-primary-50 text-primary-600"
+                          : "text-gray-700 hover:bg-gray-100",
+                      )}
+                    >
+                      Owner Dashboard
+                    </Link>
+                  )}
                   <Link
                     href="/canteens"
                     className={cn(

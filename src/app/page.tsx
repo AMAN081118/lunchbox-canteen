@@ -27,6 +27,7 @@ export default function LandingPage() {
     id,
     name,
     img_url,
+    rating,
     hostels:based_hostel_id (
       id,
       name

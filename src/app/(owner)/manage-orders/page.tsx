@@ -309,7 +309,7 @@ export default function OwnerOrdersPage() {
             <div className="space-y-4">
               {orders.map((order) => (
                 <Card key={order.id}>
-                  <CardHeader>
+                  <CardHeader className="p-4">
                     <div className="flex items-start justify-between">
                       <div>
                         <CardTitle className="text-lg">

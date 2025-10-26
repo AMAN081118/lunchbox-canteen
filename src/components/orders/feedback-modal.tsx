@@ -15,6 +15,7 @@ interface FeedbackModalProps {
   orderItems: Array<{
     id: string;
     name: string;
+    menu_item_id: string;
   }>;
 }
 
@@ -43,6 +44,7 @@ export function FeedbackModal({
         .filter((item) => ratings[item.id])
         .map((item) =>
           supabaseClient.from("feedback").insert({
+            menu_item_id: item.menu_item_id,
             order_item_id: item.id,
             profile_id: user.id,
             rating: ratings[item.id],

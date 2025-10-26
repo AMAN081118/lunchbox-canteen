@@ -10,6 +10,7 @@ interface Canteen {
   id: string;
   name: string;
   img_url: string | null;
+  rating: number;
   hostels: {
     id: string;
     name: string;
@@ -61,9 +62,11 @@ export const CanteenCard: React.FC<CanteenCardProps> = ({ canteen }) => {
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-green-100 px-2 py-1 rounded-lg">
               <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="font-bold text-sm text-gray-800">4.5</span>
+              <span className="font-bold text-sm text-gray-800">
+                {canteen.rating}
+              </span>
             </div>
-            <span className="text-sm text-gray-600">(200+ ratings)</span>
+            {/* <span className="text-sm text-gray-600"></span> */}
           </div>
 
           <div className="flex items-center justify-between text-sm">

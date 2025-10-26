@@ -31,6 +31,7 @@ interface OrderItem {
   unit_price_inr: number;
   quantity: number;
   total_price_inr: number;
+  menu_item_id: string;
 }
 
 interface Order {
@@ -75,19 +76,28 @@ export default function OrderDetailPage() {
         .from("orders")
         .select(
           `
-        *,
-        canteens (
-          id,
-          name
-        ),
-        order_items (
-          id,
-          name,
-          unit_price_inr,
-          quantity,
-          total_price_inr
-        )
-      `,
+    id,
+    user_id,
+    canteen_id,
+    backup_menu_item_id,
+    total_price_inr,
+    payment_method,
+    payment_status,
+    placed_at,
+    scheduled_for,
+    updated_at,
+    status,
+    notes,
+    canteens ( id, name ),
+    order_items (
+      id,
+      name,
+      menu_item_id,
+      unit_price_inr,
+      quantity,
+      total_price_inr
+    )
+  `,
         )
         .eq("id", orderId)
         .single();
@@ -129,7 +139,7 @@ export default function OrderDetailPage() {
     }
   }, [order, orderId]);
 
-  // ✅ FIXED: Only show modal once when order first becomes completed
+  // FIXED: Only show modal once when order first becomes completed
   useEffect(() => {
     if (!order || !user) return;
 

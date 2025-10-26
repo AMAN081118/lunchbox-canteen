@@ -108,6 +108,7 @@ export type Database = {
           img_url: string | null
           is_active: boolean
           name: string
+          rating: number
           total_sales: number
         }
         Insert: {
@@ -119,6 +120,7 @@ export type Database = {
           img_url?: string | null
           is_active?: boolean
           name: string
+          rating?: number
           total_sales?: number
         }
         Update: {
@@ -130,6 +132,7 @@ export type Database = {
           img_url?: string | null
           is_active?: boolean
           name?: string
+          rating?: number
           total_sales?: number
         }
         Relationships: [
@@ -147,7 +150,7 @@ export type Database = {
           comment: string | null
           created_at: string
           id: string
-          menu_item_id: string | null
+          menu_item_id: string
           order_item_id: string
           profile_id: string
           rating: number
@@ -156,7 +159,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
-          menu_item_id?: string | null
+          menu_item_id: string
           order_item_id: string
           profile_id: string
           rating: number
@@ -165,7 +168,7 @@ export type Database = {
           comment?: string | null
           created_at?: string
           id?: string
-          menu_item_id?: string | null
+          menu_item_id?: string
           order_item_id?: string
           profile_id?: string
           rating?: number
@@ -528,6 +531,25 @@ export type Database = {
           total_sales: number | null
         }
         Relationships: []
+      }
+      public_feedback: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          id: string | null
+          menu_item_id: string | null
+          rating: number | null
+          reviewer_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
