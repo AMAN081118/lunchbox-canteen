@@ -161,7 +161,7 @@ export default function CheckoutPage() {
             <div className="lg:col-span-2 space-y-6">
               {/* Payment Method */}
               <Card>
-                <CardHeader className="p-4">
+                <CardHeader>
                   <CardTitle>Payment Method</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -200,7 +200,7 @@ export default function CheckoutPage() {
 
               {/* Order Notes */}
               <Card>
-                <CardHeader className="p-4">
+                <CardHeader>
                   <CardTitle>Order Notes (Optional)</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -224,7 +224,7 @@ export default function CheckoutPage() {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <Card className="sticky top-4">
-                <CardHeader className="p-4">
+                <CardHeader>
                   <CardTitle>Order Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -262,7 +262,7 @@ export default function CheckoutPage() {
                     </div>
 
                     <Button
-                      className="w-full"
+                      className="w-full bg-primary-500"
                       size="lg"
                       onClick={handlePlaceOrder}
                       disabled={loading}

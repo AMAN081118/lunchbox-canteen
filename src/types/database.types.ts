@@ -218,6 +218,123 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_plan_allowed_dishes: {
+        Row: {
+          created_at: string | null
+          id: string
+          meal_plan_id: string
+          menu_item_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          meal_plan_id: string
+          menu_item_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          meal_plan_id?: string
+          menu_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_allowed_dishes_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_allowed_dishes_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plan_items: {
+        Row: {
+          completed: boolean | null
+          completed_at: string | null
+          created_at: string | null
+          day_number: number
+          id: string
+          meal_plan_id: string
+          meal_type: string
+          menu_item_id: string
+        }
+        Insert: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          day_number: number
+          id?: string
+          meal_plan_id: string
+          meal_type: string
+          menu_item_id: string
+        }
+        Update: {
+          completed?: boolean | null
+          completed_at?: string | null
+          created_at?: string | null
+          day_number?: number
+          id?: string
+          meal_plan_id?: string
+          meal_type?: string
+          menu_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_items_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_plan_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plans: {
+        Row: {
+          created_at: string | null
+          daily_budget_inr: number
+          daily_calorie_limit: number
+          end_date: string
+          id: string
+          start_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          daily_budget_inr: number
+          daily_calorie_limit: number
+          end_date: string
+          id?: string
+          start_date: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          daily_budget_inr?: number
+          daily_calorie_limit?: number
+          end_date?: string
+          id?: string
+          start_date?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       menu_items: {
         Row: {
           available: boolean
@@ -570,6 +687,7 @@ export type Database = {
           name: string
         }[]
       }
+      get_enum_values: { Args: { enum_type: string }; Returns: Json }
       search_menu_items: {
         Args: {
           p_canteen_id: string

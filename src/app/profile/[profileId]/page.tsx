@@ -1,55 +1,101 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useUserProfile } from "@/contexts/UserProfileContext";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { useAuthContext } from "@/contexts/auth-context";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabaseClient } from "@/lib/supabase/client";
-import ProfileForm, { UserProfile } from "@/components/profile/ProfileForm";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ProfileForm from "@/components/profile/ProfileForm";
+import OrderAnalytics from "@/components/profile/OrderAnalytics";
+import MealPlannerSetup from "@/components/profile/MealPlannerSetup";
+import MealPlanCalendar from "@/components/profile/MealPlanCalendar";
+import type { Database } from "@/types/database.types";
+
+type UserProfile = Database["public"]["Tables"]["profiles"]["Row"];
 
 export default function ProfilePage() {
-  const { profile, loading: profileLoading } = useUserProfile();
-  const [gender, setGender] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuthContext();
+  const [activeTab, setActiveTab] = useState("profile");
 
-  // Fetch only gender — not whole profile
-  const fetchGender = async (id: string) => {
-    try {
+  const { data: profile, refetch } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      if (!user?.id) throw new Error("Not authenticated");
       const { data, error } = await supabaseClient
         .from("profiles")
-        .select("gender")
-        .eq("id", id)
+        .select("*")
+        .eq("id", user.id)
         .single();
-
       if (error) throw error;
-      if (data?.gender) setGender(data.gender);
-    } catch (err) {
-      console.error("Error fetching gender:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data as UserProfile;
+    },
+    enabled: !!user?.id,
+  });
 
-  useEffect(() => {
-    if (profile?.id) fetchGender(profile.id);
-  }, [profile?.id]);
-
-  if (profileLoading || loading)
-    return <div className="p-8">Loading profile…</div>;
-
-  if (!profile) return <div className="p-8">Profile not found.</div>;
-
-  // Merge gender only for local usage
-  const fullProfile: UserProfile & { gender?: string | null } = {
-    ...profile,
-    gender,
-  };
+  const { data: mealPlan } = useQuery({
+    queryKey: ["meal-plan", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabaseClient
+        .from("meal_plans")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+      if (error && error.code !== "PGRST116") throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   return (
-    <div className="max-w-lg mx-auto mt-8 bg-white rounded-xl shadow p-8">
-      <h2 className="text-2xl font-bold mb-4">Your Profile</h2>
-      <ProfileForm
-        profile={fullProfile}
-        refetchProfile={() => fetchGender(profile.id)}
-      />
-    </div>
+    <ProtectedRoute redirectTo="/login">
+      <div className="min-h-screen bg-gray-50 py-6 px-2 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-8">
+            My Profile
+          </h1>
+
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-6"
+          >
+            <TabsList className="flex flex-col gap-1 w-full sm:grid sm:grid-cols-3 sm:gap-0 sm:space-y-0 space-y-2 pb-2">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="mealplan">
+                Meal Plan
+                {mealPlan && (
+                  <span className="ml-2 h-2 w-2 bg-primary-600 rounded-full" />
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile" className="space-y-6">
+              {profile && (
+                <ProfileForm profile={profile} refetchProfile={refetch} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-6">
+              {user?.id && <OrderAnalytics userId={user.id} />}
+            </TabsContent>
+
+            <TabsContent value="mealplan" className="space-y-6">
+              {user?.id && !mealPlan && (
+                <MealPlannerSetup
+                  userId={user.id}
+                  onMealPlanCreated={() => {
+                    setActiveTab("mealplan");
+                  }}
+                />
+              )}
+              {user?.id && mealPlan && <MealPlanCalendar userId={user.id} />}
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </ProtectedRoute>
   );
 }

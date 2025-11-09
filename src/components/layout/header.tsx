@@ -193,6 +193,20 @@ export function Header() {
                       <Badge className="bg-primary-600">{cartItemsCount}</Badge>
                     )}
                   </Link>
+                  <Link
+                    href={`/profile/${profile?.id}`}
+                    className={cn(
+                      "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      isActive("/profile")
+                        ? "bg-primary-50 text-primary-600"
+                        : "text-gray-700 hover:bg-gray-100",
+                    )}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    Profile
+                  </Link>
                   <Button
                     variant="outline"
                     onClick={() => {

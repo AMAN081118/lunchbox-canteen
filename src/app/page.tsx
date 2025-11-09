@@ -11,11 +11,12 @@ import { supabaseClient } from "@/lib/supabase/client";
 import Offers from "@/components/offer/offers-s";
 import { CanteenCard } from "@/components/canteen/CanteenCard";
 import { TopSearchBar } from "@/components/layout/TopSearchBar";
-
+import { useUserProfile } from "@/contexts/UserProfileContext";
 export default function LandingPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCanteen, setSelectedCanteen] = useState("all");
+  const { profile } = useUserProfile();
   // Fetch popular canteens
   const { data: canteens } = useQuery({
     queryKey: ["popular-canteens"],
@@ -86,6 +87,22 @@ export default function LandingPage() {
         selectedCanteen={selectedCanteen}
         onCanteenChange={setSelectedCanteen}
       />
+      {profile ? (
+        <section className="w-full items-center justify-center py-2">
+          <h1 className="text-2xl px-12 md:text-3xl font-bold text-gray-800 dark:text-gray-100">
+            Welcome,
+            {profile ? (
+              <span className="ml-2 bg-linear-to-r from-blue-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                {profile.full_name}
+              </span>
+            ) : (
+              "!"
+            )}
+          </h1>
+        </section>
+      ) : (
+        ""
+      )}
       <Offers />
       {/* Hero Section */}
       <section className="hidden relative bg-food-gradient text-white overflow-hidden">
